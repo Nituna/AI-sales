@@ -65,42 +65,27 @@ public class AppServer {
     private final AISearchEngine aiSearchEngine = new AISearchEngine();
 
     public AppServer() throws IOException {
-        String portEnv = System.getenv("PORT");
-        int targetPort = 8080;
-        boolean hasExplicitPort = false;
-
-        if (portEnv != null && !portEnv.trim().isEmpty()) {
-            try {
-                targetPort = Integer.parseInt(portEnv.trim());
-                hasExplicitPort = true;
-            } catch (NumberFormatException e) {
-                LOGGER.warning("Invalid PORT environment variable '" + portEnv + "', defaulting to 8080.");
-            }
-        } else {
-            String sysPropPort = System.getProperty("server.port");
-            if (sysPropPort != null && !sysPropPort.trim().isEmpty()) {
-                try {
-                    targetPort = Integer.parseInt(sysPropPort.trim());
-                    hasExplicitPort = true;
-                } catch (NumberFormatException ignored) {}
-            }
+        String envPort = System.getenv("PORT");
+        if (envPort == null || envPort.trim().isEmpty()) {
+            envPort = com.mobilesales.util.EnvConfig.get("PORT", null);
         }
 
         HttpServer createdServer = null;
-        if (hasExplicitPort) {
-            // When running on Render or explicit PORT is specified, bind directly to 0.0.0.0:targetPort
+        if (envPort != null && !envPort.trim().isEmpty()) {
+            int p;
             try {
-                createdServer = HttpServer.create(new InetSocketAddress("0.0.0.0", targetPort), 0);
-                this.port = targetPort;
-            } catch (IOException e) {
-                LOGGER.severe("Failed to bind to specified PORT " + targetPort + ": " + e.getMessage());
-                throw e;
+                p = Integer.parseInt(envPort.trim());
+            } catch (NumberFormatException e) {
+                LOGGER.warning("Invalid PORT environment variable value '" + envPort + "', falling back to 8080.");
+                p = 8080;
             }
+            this.port = p;
+            createdServer = HttpServer.create(new InetSocketAddress("0.0.0.0", this.port), 0);
+            LOGGER.info("Configured server to listen on PORT environment variable: " + this.port);
         } else {
-            // Local development fallback: try 8080, 8081, 8082... on 0.0.0.0
-            int[] trialPorts = new int[]{targetPort, 8081, 8082, 8085, 8090, 8888, 9000};
+            // Local fallback: try 8080, then 8081, 8082, etc.
+            int[] trialPorts = new int[]{8080, 8081, 8082, 8085, 8090, 8888, 9000};
             IOException lastEx = null;
-
             for (int p : trialPorts) {
                 try {
                     createdServer = HttpServer.create(new InetSocketAddress("0.0.0.0", p), 0);
@@ -111,7 +96,6 @@ public class AppServer {
                     LOGGER.warning("Port " + p + " is occupied, attempting next available port...");
                 }
             }
-
             if (createdServer == null) {
                 throw lastEx != null ? lastEx : new IOException("Could not bind to any available port.");
             }
@@ -128,17 +112,9 @@ public class AppServer {
 
     public void start() {
         server.start();
-        LOGGER.info("==================================================================");
-        LOGGER.info(" Application started");
-        LOGGER.info(" AI Mobile Inventory & Sales Analytics Server started on Port " + port);
-        LOGGER.info(" Listening on: 0.0.0.0:" + port);
-        LOGGER.info(" Database Mode: " + DatabaseConnection.getInstance().getDbType());
-        if (com.mobilesales.util.EnvConfig.hasApiKey()) {
-            LOGGER.info(" AI Search API: Configured (Model: " + com.mobilesales.util.EnvConfig.get("AI_SEARCH_MODEL", "mistral-small-latest") + ")");
-        } else {
-            LOGGER.info(" AI Search API: Web Search Fallback (No AI_API_KEY detected)");
-        }
-        LOGGER.info("==================================================================");
+        LOGGER.info("AI Mobile Inventory & Sales Analytics Server started on 0.0.0.0:" + port);
+        LOGGER.info("Web Application: http://0.0.0.0:" + port + " (local: http://localhost:" + port + ")");
+        LOGGER.info("Database: " + DatabaseConnection.getInstance().getDbType());
     }
 
     public void stop() {
@@ -147,9 +123,8 @@ public class AppServer {
     }
 
     private void setupRoutes() {
-        // Health check endpoints for Render Web Service
-        server.createContext("/health", new HealthCheckHandler());
-        server.createContext("/api/health", new HealthCheckHandler());
+        // Health Check Route for Render & Monitoring
+        server.createContext("/health", new HealthHandler());
 
         // API Routes
         server.createContext("/api/auth/login", new LoginHandler());
@@ -173,19 +148,18 @@ public class AppServer {
     // HTTP HANDLERS
     // ==========================================
 
-    private class HealthCheckHandler implements HttpHandler {
+    private class HealthHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
-                sendOptionsResponse(exchange);
+                exchange.getResponseHeaders().set("Allow", "GET, HEAD, OPTIONS");
+                exchange.sendResponseHeaders(204, -1);
                 return;
             }
             Map<String, Object> resp = new HashMap<>();
             resp.put("status", "ok");
             resp.put("timestamp", System.currentTimeMillis());
-            resp.put("service", "AI Mobile Inventory & Sales Analytics");
-            resp.put("database", DatabaseConnection.getInstance().getDbType());
-            resp.put("aiConfigured", com.mobilesales.util.EnvConfig.hasApiKey());
+            resp.put("dbType", DatabaseConnection.getInstance().getDbType());
             sendJsonResponse(exchange, 200, resp);
         }
     }
@@ -802,6 +776,10 @@ public class AppServer {
                 byte[] bytes = in.readAllBytes();
                 Headers headers = exchange.getResponseHeaders();
                 headers.set("Content-Type", mimeType);
+                if ("HEAD".equalsIgnoreCase(exchange.getRequestMethod())) {
+                    exchange.sendResponseHeaders(200, -1);
+                    return;
+                }
                 exchange.sendResponseHeaders(200, bytes.length);
                 try (OutputStream os = exchange.getResponseBody()) {
                     os.write(bytes);
@@ -831,26 +809,22 @@ public class AppServer {
         byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
         Headers headers = exchange.getResponseHeaders();
         headers.set("Content-Type", "application/json; charset=UTF-8");
-        headers.set("Access-Control-Allow-Origin", "*");
-        headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        if ("HEAD".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.sendResponseHeaders(status, -1);
+            return;
+        }
         exchange.sendResponseHeaders(status, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
         }
     }
 
-    private void sendOptionsResponse(HttpExchange exchange) throws IOException {
-        Headers headers = exchange.getResponseHeaders();
-        headers.set("Access-Control-Allow-Origin", "*");
-        headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-        exchange.sendResponseHeaders(204, -1);
-        exchange.close();
-    }
-
     private void sendResponse(HttpExchange exchange, int status, String msg) throws IOException {
         byte[] bytes = msg.getBytes(StandardCharsets.UTF_8);
+        if ("HEAD".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.sendResponseHeaders(status, -1);
+            return;
+        }
         exchange.sendResponseHeaders(status, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);

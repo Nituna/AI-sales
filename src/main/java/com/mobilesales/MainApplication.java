@@ -40,6 +40,7 @@ public class MainApplication {
                 }
             }
 
+            // Headless mode for cloud server deployments (Render, Linux containers)
             if (!launchGui) {
                 System.setProperty("java.awt.headless", "true");
             }
@@ -48,9 +49,11 @@ public class MainApplication {
             AppServer server = new AppServer();
             server.start();
 
-            String url = "http://localhost:" + server.getPort();
-            System.out.println("\n>>> [SUCCESS] Application started");
-            System.out.println(">>> [SUCCESS] Web Application running at: " + url);
+            int port = server.getPort();
+            System.out.println("\n>>> [SUCCESS] Web Application running on port: " + port);
+            System.out.println(">>> Bound to: http://0.0.0.0:" + port + " (accessible externally on Render)");
+            System.out.println(">>> Local URL: http://localhost:" + port);
+            System.out.println(">>> Health Check: http://localhost:" + port + "/health");
             System.out.println(">>> Default Login Credentials: username: 'admin', password: 'password123'");
             System.out.println(">>> (Or test with username: 'analyst', password: 'analyst123')\n");
 

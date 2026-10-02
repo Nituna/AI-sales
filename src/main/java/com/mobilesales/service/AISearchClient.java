@@ -20,11 +20,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Robust Client for AI and Live Web Search queries.
- * Supports OpenAI Chat/Responses API with web search when AI_API_KEY is configured.
- * When AI_API_KEY is not configured, provides real live web search retrieval
- * via public search APIs (DuckDuckGo Instant Answer / HTML search).
- * Enforces strict error handling and security: keys are never passed to the frontend.
+ * Robust Client for AI and Live Web Search queries. Supports OpenAI
+ * Chat/Responses API with web search when AI_API_KEY is configured. When
+ * AI_API_KEY is not configured, provides real live web search retrieval via
+ * public search APIs (DuckDuckGo Instant Answer / HTML search). Enforces strict
+ * error handling and security: keys are never passed to the frontend.
  */
 public class AISearchClient {
 
@@ -43,6 +43,7 @@ public class AISearchClient {
     }
 
     public static class QuerySearchResult {
+
         private final String query;
         private final boolean success;
         private final String rawText;
@@ -57,11 +58,25 @@ public class AISearchClient {
             this.statusCode = statusCode;
         }
 
-        public String getQuery() { return query; }
-        public boolean isSuccess() { return success; }
-        public String getRawText() { return rawText != null ? rawText : ""; }
-        public String getErrorMessage() { return errorMessage; }
-        public int getStatusCode() { return statusCode; }
+        public String getQuery() {
+            return query;
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getRawText() {
+            return rawText != null ? rawText : "";
+        }
+
+        public String getErrorMessage() {
+            return errorMessage;
+        }
+
+        public int getStatusCode() {
+            return statusCode;
+        }
     }
 
     /**
@@ -72,7 +87,6 @@ public class AISearchClient {
         if (apiKey == null || apiKey.trim().isEmpty() || apiKey.equalsIgnoreCase("your_api_key_here")) {
             apiKey = EnvConfig.get("GEMINI_API_KEY");
         }
-
         if (apiKey != null && !apiKey.trim().isEmpty() && !apiKey.equalsIgnoreCase("your_api_key_here")) {
             return executeAiModelSearch(query, apiKey);
         } else {
@@ -81,23 +95,20 @@ public class AISearchClient {
     }
 
     /**
-     * Executes AI Search using configured model and endpoint (Mistral, OpenAI, Gemini).
-     * Defaults to Mistral:
-     * Endpoint: https://api.mistral.ai/v1/chat/completions
-     * Model: mistral-small-latest
+     * Executes AI Search using configured model and endpoint (OpenAI, Gemini, Mistral).
      */
     private QuerySearchResult executeAiModelSearch(String query, String apiKey) throws Exception {
         try {
-            String model = EnvConfig.get("AI_SEARCH_MODEL", "mistral-small-latest");
+            String model = EnvConfig.get("AI_SEARCH_MODEL", "gpt-4o-mini");
             String endpoint = EnvConfig.get("AI_API_ENDPOINT");
 
             if (endpoint == null || endpoint.trim().isEmpty()) {
                 if (model.toLowerCase().contains("gemini") || (EnvConfig.get("GEMINI_API_KEY") != null && !EnvConfig.get("GEMINI_API_KEY").isEmpty())) {
                     endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-                } else if (model.toLowerCase().contains("gpt")) {
-                    endpoint = "https://api.openai.com/v1/chat/completions";
-                } else {
+                } else if (model.toLowerCase().contains("mistral")) {
                     endpoint = "https://api.mistral.ai/v1/chat/completions";
+                } else {
+                    endpoint = "https://api.openai.com/v1/chat/completions";
                 }
             }
 
@@ -108,9 +119,9 @@ public class AISearchClient {
             JsonArray messages = new JsonArray();
             JsonObject sysMsg = new JsonObject();
             sysMsg.addProperty("role", "system");
-            sysMsg.addProperty("content", "You are an AI Search & Specification Intelligence Engine. " +
-                    "Search and provide factual, real-time mobile specifications, market comparison, and search presence. " +
-                    "Include details about Battery, RAM, Storage, Processor, Camera, Display, brand, and competitor mentions.");
+            sysMsg.addProperty("content", "You are an AI Search & Specification Intelligence Engine. "
+                    + "Search and provide factual, real-time mobile specifications, market comparison, and search presence. "
+                    + "Include details about Battery, RAM, Storage, Processor, Camera, Display, brand, and competitor mentions.");
             messages.add(sysMsg);
 
             JsonObject userMsg = new JsonObject();
@@ -155,8 +166,8 @@ public class AISearchClient {
     }
 
     /**
-     * Executes real live web search using DuckDuckGo Instant Answer / HTML Search.
-     * Provides real internet retrieval when no API key is specified.
+     * Executes real live web search using DuckDuckGo Instant Answer / HTML
+     * Search. Provides real internet retrieval when no API key is specified.
      */
     private QuerySearchResult executeLiveWebSearch(String query) {
         try {

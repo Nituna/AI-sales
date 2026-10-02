@@ -34,6 +34,7 @@
                 <transformer>
                   <mainClass>com.mobilesales.MainApplication</mainClass>
                 </transformer>
+                <transformer />
               </transformers>
             </configuration>
           </execution>

@@ -1,13 +1,16 @@
 services:
   - type: web
     name: ai-sales-inventory
-    env: docker
+    env: java
     plan: free
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -jar target/ai-sales-inventory-1.0.0.jar
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
-      - key: AI_API_ENDPOINT
-        value: https://api.mistral.ai/v1/chat/completions
+      - key: DB_TYPE
+        value: SQLITE
       - key: AI_SEARCH_MODEL
-        value: mistral-small-latest
+        value: gpt-4o-mini
       - key: AI_API_KEY
         sync: false

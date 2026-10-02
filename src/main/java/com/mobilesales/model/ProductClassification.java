@@ -1,11 +1,9 @@
 package com.mobilesales.model;
 
 /**
- * Enumeration representing product velocity classifications:
- * 1. Fast Moving
- * 2. Medium Moving
- * 3. Slow Moving
- * 4. Potential Fast Moving (AI signal driven alert)
+ * Enumeration representing product velocity classifications: 1. Fast Moving 2.
+ * Medium Moving 3. Slow Moving 4. Potential Fast Moving (AI signal driven
+ * alert)
  */
 public enum ProductClassification {
     FAST_MOVING("Fast Moving", "High historical velocity and sustained market momentum", "#10b981", "fas fa-bolt"),
@@ -42,7 +40,9 @@ public enum ProductClassification {
     }
 
     public static ProductClassification fromString(String val) {
-        if (val == null) return MEDIUM_MOVING;
+        if (val == null) {
+            return MEDIUM_MOVING;
+        }
         String clean = val.trim().toUpperCase().replace(" ", "_");
         for (ProductClassification c : values()) {
             if (c.name().equalsIgnoreCase(clean) || c.label.equalsIgnoreCase(val)) {
