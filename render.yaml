@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: ai-sales-inventory
+    env: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: AI_API_ENDPOINT
+        value: https://api.mistral.ai/v1/chat/completions
+      - key: AI_SEARCH_MODEL
+        value: mistral-small-latest
+      - key: AI_API_KEY
+        sync: false

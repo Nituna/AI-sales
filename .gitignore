@@ -1,0 +1,31 @@
+# Environment Variables & Secrets
+.env
+*.env
+!.env.example
+
+# Build Artifacts
+target/
+*.class
+*.jar
+*.war
+
+# Database files
+data/*.db
+data/*.sqlite
+*.db
+
+# IDE configuration
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Temporary files & logs
+*.log

@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Enhanced Mobile Inventory & Sales Analytics</title>
+    <meta name="description" content="College Data Science + Java OOP project: Mobile inventory, sales forecasting, AI search visibility, information accuracy, and smart reorder analytics.">
+    
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Custom Design System -->
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+    <!-- ========================================================
+         1. APPLICATION START — LOGIN SCREEN
+         ======================================================== -->
+    <section id="loginScreen" class="auth-wrapper">
+        <div class="auth-card fade-in">
+            <div class="auth-logo-badge">
+                <i class="fas fa-brain"></i>
+            </div>
+            <h1 class="auth-title">AI-Enhanced Mobile Inventory & Sales Analytics</h1>
+            <p class="auth-subtitle">College Data Science &amp; Java OOP Analytics System</p>
+
+            <div id="loginAlert" class="alert-box alert-danger hidden">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="loginAlertText">Invalid credentials</span>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label" for="loginUsername">Username</label>
+                    <input type="text" id="loginUsername" class="form-control" placeholder="Enter username (e.g. admin)" required value="admin">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" class="form-control" placeholder="Enter password (e.g. password123)" required value="password123">
+                </div>
+
+                <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-block">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+            </form>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px;">
+                <button type="button" class="btn btn-secondary" style="font-size: 13px; padding: 8px 14px;" onclick="showRegistrationScreen()">
+                    <i class="fas fa-user-plus"></i> Register
+                </button>
+                <a href="#" onclick="showForgotPasswordModal(event)" style="color: var(--cyan-400); font-size: 13px; text-decoration: none;">
+                    Forgot Password?
+                </a>
+            </div>
+
+            <div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid rgba(148, 163, 184, 0.1); font-size: 12px; color: var(--text-muted); text-align: center;">
+                <span>Default Credentials: <b>admin</b> / <b>password123</b> or <b>analyst</b> / <b>analyst123</b></span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================================
+         2. REGISTRATION SCREEN
+         ======================================================== -->
+    <section id="registerScreen" class="auth-wrapper hidden">
+        <div class="auth-card fade-in">
+            <div class="auth-logo-badge" style="color: var(--emerald-500); border-color: rgba(16, 185, 129, 0.35);">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <h1 class="auth-title">Register New Analyst</h1>
+            <p class="auth-subtitle">Create account to access the Java Supply Chain Intelligence engine</p>
+
+            <div id="registerAlert" class="alert-box alert-danger hidden">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="registerAlertText">Validation error</span>
+            </div>
+
+            <form id="registerForm" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label class="form-label" for="regFullName">Full Name</label>
+                    <input type="text" id="regFullName" class="form-control" placeholder="e.g. Alex Morgan" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="regUsername">Username</label>
+                    <input type="text" id="regUsername" class="form-control" placeholder="Choose unique username" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="regEmail">Email Address</label>
+                    <input type="email" id="regEmail" class="form-control" placeholder="name@company.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="regPassword">Password</label>
+                    <input type="password" id="regPassword" class="form-control" placeholder="Create secure password" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="regConfirmPassword">Confirm Password</label>
+                    <input type="password" id="regConfirmPassword" class="form-control" placeholder="Re-enter password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-check-circle"></i> Complete Registration
+                </button>
+            </form>
+
+            <div style="margin-top: 20px; text-align: center;">
+                <button type="button" class="btn btn-secondary" onclick="showLoginScreen()">
+                    <i class="fas fa-arrow-left"></i> Back to Login
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================================
+         MAIN APPLICATION SHELL (AFTER AUTHENTICATION)
+         ======================================================== -->
+    <div id="appShell" class="app-layout hidden">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-logo">
+                    <i class="fas fa-mobile-screen-button"></i>
+                </div>
+                <div>
+                    <div class="sidebar-title">MobileAI Sales</div>
+                    <div class="sidebar-subtitle">OOP &amp; Data Science</div>
+                </div>
+            </div>
+
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#" class="nav-link active" onclick="switchMainView('brandSelectionView', this)">
+                        <i class="fas fa-layer-group"></i> Brand Selection
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" id="navProductDashboard" onclick="switchMainView('productDashboardView', this)">
+                        <i class="fas fa-chart-pie"></i> Product Analytics
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" onclick="switchMainView('executiveDashboardView', this)">
+                        <i class="fas fa-tachometer-alt"></i> Executive Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" onclick="switchMainView('dataEntryView', this)">
+                        <i class="fas fa-file-csv"></i> Data Entry &amp; CSV
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar" id="userAvatar">A</div>
+                    <div class="user-meta">
+                        <div class="user-name" id="userNameLabel">Admin User</div>
+                        <div class="user-role" id="userRoleLabel">SYSTEM ANALYST</div>
+                    </div>
+                </div>
+                <button onclick="handleLogout()" title="Logout" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px;">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Wrapper -->
+        <div class="main-wrapper">
+            <!-- Top Navbar -->
+            <header class="top-navbar">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <h2 id="topNavTitle" style="font-size: 18px; font-weight: 700;">Mobile Inventory &amp; Sales Analytics</h2>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <button class="btn btn-secondary" style="font-size: 13px; padding: 7px 14px;" onclick="openAddProductModal()">
+                        <i class="fas fa-plus"></i> Add Product
+                    </button>
+                    <button class="btn btn-secondary" style="font-size: 13px; padding: 7px 14px;" onclick="downloadAuditReport()">
+                        <i class="fas fa-file-download"></i> Audit Report
+                    </button>
+                    <button class="btn btn-primary" style="font-size: 13px; padding: 7px 14px;" onclick="exportCatalogCSV()">
+                        <i class="fas fa-download"></i> Export CSV
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main class="content-container">
+
+                <!-- ========================================================
+                     VIEW 1: HOME / BRAND SELECTION PAGE
+                     ======================================================== -->
+                <div id="brandSelectionView" class="view-panel fade-in">
+                    <div class="glass-card brand-selector-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <h1 style="font-size: 24px; font-weight: 800; margin-bottom: 6px;">Select Mobile Brand</h1>
+                                <p style="font-size: 14px; color: var(--text-secondary);">
+                                    Explore models and trigger AI-enhanced inventory, sales, and replenishment analytics.
+                                </p>
+                            </div>
+                            <div style="width: 260px;">
+                                <label class="form-label" for="brandDropdownSelect">Quick Brand Dropdown:</label>
+                                <select id="brandDropdownSelect" class="form-control" onchange="onBrandSelected(this.value)">
+                                    <option value="Samsung">Samsung</option>
+                                    <option value="Apple">Apple</option>
+                                    <option value="OnePlus">OnePlus</option>
+                                    <option value="Xiaomi">Xiaomi</option>
+                                    <option value="Vivo">Vivo</option>
+                                    <option value="Oppo">Oppo</option>
+                                    <option value="Google Pixel">Google Pixel</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Brand Chips -->
+                        <div class="brand-chips-grid">
+                            <div class="brand-chip active" onclick="onBrandSelected('Samsung', this)">
+                                <i class="fas fa-star-of-life"></i>
+                                <span class="brand-chip-name">Samsung</span>
+                            </div>
+                            <div class="brand-chip" onclick="onBrandSelected('Apple', this)">
+                                <i class="fab fa-apple"></i>
+                                <span class="brand-chip-name">Apple</span>
+                            </div>
+                            <div class="brand-chip" onclick="onBrandSelected('OnePlus', this)">
+                                <i class="fas fa-plus"></i>
+                                <span class="brand-chip-name">OnePlus</span>
+                            </div>
+                            <div class="brand-chip" onclick="onBrandSelected('Xiaomi', this)">
+                                <i class="fas fa-bolt"></i>
+                                <span class="brand-chip-name">Xiaomi</span>
+                            </div>
+                            <div class="brand-chip" onclick="onBrandSelected('Vivo', this)">
+                                <i class="fas fa-gem"></i>
+                                <span class="brand-chip-name">Vivo</span>
+                            </div>
+                            <div class="brand-chip" onclick="onBrandSelected('Oppo', this)">
+                                <i class="fas fa-circle-nodes"></i>
+                                <span class="brand-chip-name">Oppo</span>
+                            </div>
+                            <div class="brand-chip" onclick="onBrandSelected('Google Pixel', this)">
+                                <i class="fab fa-google"></i>
+                                <span class="brand-chip-name">Google Pixel</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Available Mobile Models Section -->
+                    <div id="availableModelsSection" style="display: flex; justify-content: space-between; align-items: center; margin: 28px 0 16px 0;">
+                        <div>
+                            <h2 style="font-size: 20px; font-weight: 700;">Available Models for <span id="currentBrandLabel" style="color: var(--cyan-400);">Samsung</span></h2>
+                            <p style="font-size: 13px; color: var(--text-muted);">Click on any smartphone to open the full analytics dashboard</p>
+                        </div>
+                        <span id="modelCountBadge" class="metric-badge badge-cyan">5 Models Loaded</span>
+                    </div>
+
+                    <div id="modelsGridContainer" class="models-grid">
+                        <!-- Populated dynamically via app.js -->
+                    </div>
+                </div>
+
+                <!-- ========================================================
+                     VIEW 2: MOBILE PRODUCT DASHBOARD
+                     ======================================================== -->
+                <div id="productDashboardView" class="view-panel hidden fade-in">
+                    <!-- Top Product Header Card -->
+                    <div class="glass-card" style="padding: 24px 28px; margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+                                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="switchMainView('brandSelectionView')">
+                                        <i class="fas fa-arrow-left"></i> Models
+                                    </button>
+                                    <span id="prodBrandTag" style="font-size: 14px; color: var(--cyan-400); font-weight: 700; text-transform: uppercase;">Samsung</span>
+                                    <span style="color: var(--text-muted);">•</span>
+                                    <span id="prodCategoryTag" style="font-size: 13px; color: var(--text-secondary);">Flagship Smartphone</span>
+                                </div>
+                                <h1 id="prodModelTitle" style="font-size: 26px; font-weight: 800; letter-spacing: -0.02em;">Galaxy S24 Ultra</h1>
+                            </div>
+
+                            <div style="display: flex; align-items: center; gap: 20px;">
+                                <div>
+                                    <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Official Price</div>
+                                    <div id="prodPriceTag" style="font-size: 26px; font-weight: 800; color: var(--emerald-500); font-family: 'JetBrains Mono', monospace;">$1,299.99</div>
+                                </div>
+                                <div id="prodClassBadge" class="metric-badge badge-green" style="font-size: 13px; padding: 8px 14px;">
+                                    <i class="fas fa-bolt"></i> Fast Moving
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Buttons -->
+                    <div class="tab-navigation">
+                        <button class="tab-btn active" onclick="switchProductTab('tabSpecs', this)">
+                            <i class="fas fa-microchip"></i> Product Information
+                        </button>
+                        <button class="tab-btn" onclick="switchProductTab('tabSales', this)">
+                            <i class="fas fa-chart-line"></i> Sales Analytics
+                        </button>
+                        <button class="tab-btn" onclick="switchProductTab('tabInventory', this)">
+                            <i class="fas fa-boxes-stacked"></i> Inventory Analytics
+                        </button>
+                        <button class="tab-btn" onclick="switchProductTab('tabAISearch', this)">
+                            <i class="fas fa-wand-magic-sparkles"></i> AI Search Intelligence
+                        </button>
+                        <button class="tab-btn" onclick="switchProductTab('tabDemand', this)">
+                            <i class="fas fa-compass"></i> Demand Analysis
+                        </button>
+                        <button class="tab-btn" onclick="switchProductTab('tabReorder', this)">
+                            <i class="fas fa-truck-ramp-box"></i> Smart Reorder
+                        </button>
+                    </div>
+
+                    <!-- TAB CONTENT 1: PRODUCT INFORMATION -->
+                    <div id="tabSpecs" class="prod-tab-content">
+                        <div class="glass-card" style="padding: 28px;">
+                            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 20px;">
+                                <i class="fas fa-info-circle" style="color: var(--cyan-400);"></i> Ground-Truth Hardware Specifications
+                            </h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px;">
+                                <div class="glass-card" style="padding: 16px 20px; background: rgba(15, 23, 42, 0.5);">
+                                    <div style="font-size: 12px; color: var(--text-muted);">Processor / SoC</div>
+                                    <div id="specProcessor" style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">Snapdragon 8 Gen 3 for Galaxy</div>
+                                </div>
+                                <div class="glass-card" style="padding: 16px 20px; background: rgba(15, 23, 42, 0.5);">
+                                    <div style="font-size: 12px; color: var(--text-muted);">RAM &amp; Storage</div>
+                                    <div id="specMemory" style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">12GB RAM / 512GB Storage</div>
+                                </div>
+                                <div class="glass-card" style="padding: 16px 20px; background: rgba(15, 23, 42, 0.5);">
+                                    <div style="font-size: 12px; color: var(--text-muted);">Display Panel</div>
+                                    <div id="specDisplay" style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">6.8" Dynamic AMOLED 2X 120Hz</div>
+                                </div>
+                                <div class="glass-card" style="padding: 16px 20px; background: rgba(15, 23, 42, 0.5);">
+                                    <div style="font-size: 12px; color: var(--text-muted);">Camera System</div>
+                                    <div id="specCamera" style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">200MP + 50MP + 12MP + 10MP</div>
+                                </div>
+                                <div class="glass-card" style="padding: 16px 20px; background: rgba(15, 23, 42, 0.5);">
+                                    <div style="font-size: 12px; color: var(--text-muted);">Battery &amp; Charging</div>
+                                    <div id="specBattery" style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">5000 mAh (45W Fast Charging)</div>
+                                </div>
+                                <div class="glass-card" style="padding: 16px 20px; background: rgba(15, 23, 42, 0.5);">
+                                    <div style="font-size: 12px; color: var(--text-muted);">Operating System</div>
+                                    <div id="specOS" style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">Android 14 / One UI 6.1</div>
+                                </div>
+                                <div class="glass-card" style="padding: 16px 20px; background: rgba(15, 23, 42, 0.5);">
+                                    <div style="font-size: 12px; color: var(--text-muted);">Network &amp; Connectivity</div>
+                                    <div id="specNetwork" style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">5G Dual SIM, Wi-Fi 7, BT 5.3</div>
+                                </div>
+                                <div class="glass-card" style="padding: 16px 20px; background: rgba(15, 23, 42, 0.5);">
+                                    <div style="font-size: 12px; color: var(--text-muted);">Launch Date</div>
+                                    <div id="specLaunch" style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">2024-01-24</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB CONTENT 2: SALES ANALYTICS -->
+                    <div id="tabSales" class="prod-tab-content hidden">
+                        <!-- Sales Metric Cards -->
+                        <div class="metrics-row">
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Total Units Sold</div>
+                                <div id="salesTotalUnits" class="metric-value">1,160</div>
+                                <span class="metric-badge badge-cyan"><i class="fas fa-check-circle"></i> Historical</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Weekly Sales</div>
+                                <div id="salesWeekly" class="metric-value">38</div>
+                                <span class="metric-badge badge-blue">Run-rate</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Monthly Sales</div>
+                                <div id="salesMonthly" class="metric-value">145</div>
+                                <span class="metric-badge badge-green">Current Month</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Previous Month Sales</div>
+                                <div id="salesPrevMonth" class="metric-value">115</div>
+                                <span class="metric-badge badge-purple">M-1 Base</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Sales Growth %</div>
+                                <div id="salesGrowthPct" class="metric-value">+26.1%</div>
+                                <span id="salesGrowthBadge" class="metric-badge badge-green">Growth</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Predicted Future Sales</div>
+                                <div id="salesPredictedFuture" class="metric-value">166</div>
+                                <span class="metric-badge badge-amber">Baseline Projection</span>
+                            </div>
+                        </div>
+
+                        <!-- Charts Row -->
+                        <div class="charts-grid-2">
+                            <div class="glass-card chart-card">
+                                <div class="chart-header">
+                                    <h3 class="chart-title"><i class="fas fa-chart-column" style="color: var(--cyan-400);"></i> Weekly Sales Velocity (Units)</h3>
+                                </div>
+                                <div class="chart-canvas-wrapper">
+                                    <canvas id="weeklySalesChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="glass-card chart-card">
+                                <div class="chart-header">
+                                    <h3 class="chart-title"><i class="fas fa-chart-line" style="color: var(--emerald-500);"></i> Monthly Sales Trend &amp; Growth</h3>
+                                </div>
+                                <div class="chart-canvas-wrapper">
+                                    <canvas id="monthlySalesChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB CONTENT 3: INVENTORY ANALYTICS -->
+                    <div id="tabInventory" class="prod-tab-content hidden">
+                        <div class="metrics-row">
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Current Stock</div>
+                                <div id="invCurrentStock" class="metric-value">35 units</div>
+                                <span class="metric-badge badge-cyan">Physical On-Hand</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Safety Stock</div>
+                                <div id="invSafetyStock" class="metric-value">20 units</div>
+                                <span class="metric-badge badge-purple">Buffer Target</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Reorder Level</div>
+                                <div id="invReorderLevel" class="metric-value">50 units</div>
+                                <span class="metric-badge badge-amber">Trigger Threshold</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Supplier Lead Time</div>
+                                <div id="invLeadTime" class="metric-value">7 days</div>
+                                <span class="metric-badge badge-blue">Transit Window</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Available Stock</div>
+                                <div id="invAvailableStock" class="metric-value">35 units</div>
+                                <span class="metric-badge badge-green">Unreserved</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Inventory Status</div>
+                                <div id="invStatusLabel" class="metric-value" style="font-size: 20px; color: var(--rose-500);">Low Stock</div>
+                                <span id="invStatusBadge" class="metric-badge badge-rose">Attention Required</span>
+                            </div>
+                        </div>
+
+                        <div class="glass-card" style="padding: 24px; margin-top: 14px;">
+                            <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">Inventory Buffer &amp; Stock Runway Analysis</h3>
+                            <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.5;" id="invBufferDiagnosis">
+                                Current warehouse inventory is running tight. With an average daily sales run-rate, stock will breach safety threshold within the supplier lead time window.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- TAB CONTENT 4: AI SEARCH INTELLIGENCE -->
+                    <div id="tabAISearch" class="prod-tab-content hidden">
+                        <!-- AI Analysis Status & Control Bar -->
+                        <div class="glass-card" style="padding: 14px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-left: 3px solid var(--cyan-400);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <i class="fas fa-brain" style="font-size: 20px; color: var(--cyan-400);"></i>
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);">Real-Time AI &amp; Web Search Intelligence</div>
+                                    <div style="font-size: 12px; color: var(--text-secondary);">
+                                        Last AI Analysis: <strong id="aiLastAnalyzed" style="color: var(--cyan-300);">Not yet analyzed</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <button id="btnRefreshAi" type="button" onclick="refreshAiAnalysis()" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <i class="fas fa-arrows-rotate" id="aiRefreshIcon"></i>
+                                <span>Refresh AI Analysis</span>
+                            </button>
+                        </div>
+
+                        <!-- Error / Status Notice Banner -->
+                        <div id="aiStatusAlert" style="display: none; padding: 12px 16px; margin-bottom: 16px; border-radius: var(--radius-sm); font-size: 13px;"></div>
+
+                        <!-- AI 3 Core Metrics -->
+                        <div class="metrics-row">
+                            <!-- Visibility -->
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">A. Visibility Score</div>
+                                <div id="aiVisibilityScore" class="metric-value">92.0%</div>
+                                <div class="progress-bar-bg">
+                                    <div id="aiVisibilityBar" class="progress-bar-fill" style="width: 92%;"></div>
+                                </div>
+                                <span class="metric-badge badge-cyan"><i class="fas fa-eye"></i> Search Presence</span>
+                            </div>
+
+                            <!-- Information Accuracy -->
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">B. Information Accuracy</div>
+                                <div id="aiAccuracyScore" class="metric-value">100.0%</div>
+                                <div class="progress-bar-bg">
+                                    <div id="aiAccuracyBar" class="progress-bar-fill" style="width: 100%; background: var(--emerald-500);"></div>
+                                </div>
+                                <span class="metric-badge badge-green"><i class="fas fa-shield-check"></i> Spec Ground-Truth</span>
+                            </div>
+
+                            <!-- Customer Engagement Proxy -->
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">C. Customer Engagement Proxy</div>
+                                <div id="aiEngagementScore" class="metric-value">88.0%</div>
+                                <div class="progress-bar-bg">
+                                    <div id="aiEngagementBar" class="progress-bar-fill" style="width: 88%; background: var(--purple-500);"></div>
+                                </div>
+                                <span class="metric-badge badge-purple" title="Proxy derived from measurable search, comparison, review, and recommendation signals"><i class="fas fa-chart-line"></i> Engagement Proxy</span>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Breakdown Rows -->
+                        <div class="charts-grid-2">
+                            <!-- Visibility Breakdown Card -->
+                            <div class="glass-card" style="padding: 24px;">
+                                <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">
+                                    <i class="fas fa-magnifying-glass" style="color: var(--cyan-400);"></i> Visibility Funnel &amp; Query Mentions
+                                </h3>
+                                <div style="display: flex; flex-direction: column; gap: 14px;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                                        <span style="color: var(--text-secondary);">Total Relevant AI/Search Queries:</span>
+                                        <strong id="aiTotalQueries">1,000</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                                        <span style="color: var(--text-secondary);">Product Appearances:</span>
+                                        <strong id="aiAppearances" style="color: var(--cyan-400);">920 (92%)</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                                        <span style="color: var(--text-secondary);">Brand Mentions in Queries:</span>
+                                        <strong id="aiBrandMentions">780</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                                        <span style="color: var(--text-secondary);">Competitor Comparison Queries:</span>
+                                        <strong id="aiCompQueries">310</strong>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 18px; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-muted);">
+                                    <strong>Formula:</strong> Visibility = (Product appearances / Total relevant queries) × 100
+                                </div>
+                            </div>
+
+                            <!-- Accuracy Claims Verification Card -->
+                            <div class="glass-card" style="padding: 24px;">
+                                <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">
+                                    <i class="fas fa-check-double" style="color: var(--emerald-500);"></i> AI Spec Claims vs Verified Ground Truth
+                                </h3>
+                                <div id="claimsListContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                                    <!-- Populated dynamically via app.js -->
+                                </div>
+                                <div style="margin-top: 18px; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-muted);">
+                                    <strong>Formula:</strong> Accuracy = (Correct claims / Total claims) × 100
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Customer Engagement Intent Metrics -->
+                        <div class="glass-card" style="padding: 24px; margin-top: 16px;">
+                            <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">
+                                <i class="fas fa-chart-simple" style="color: var(--purple-500);"></i> Customer Engagement &amp; Funnel Intent Signals
+                            </h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px;">
+                                <div class="glass-card" style="padding: 14px; background: rgba(15, 23, 42, 0.4);">
+                                    <div style="font-size: 11px; color: var(--text-muted);">Direct Product Searches</div>
+                                    <div id="engSearches" style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">480</div>
+                                </div>
+                                <div class="glass-card" style="padding: 14px; background: rgba(15, 23, 42, 0.4);">
+                                    <div style="font-size: 11px; color: var(--text-muted);">Comparison Queries</div>
+                                    <div id="engComparisons" style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">310</div>
+                                </div>
+                                <div class="glass-card" style="padding: 14px; background: rgba(15, 23, 42, 0.4);">
+                                    <div style="font-size: 11px; color: var(--text-muted);">Recommendation Queries</div>
+                                    <div id="engRecommendations" style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">195</div>
+                                </div>
+                                <div class="glass-card" style="padding: 14px; background: rgba(15, 23, 42, 0.4);">
+                                    <div style="font-size: 11px; color: var(--text-muted);">Interactive Reviews</div>
+                                    <div id="engReviews" style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-top: 4px;">140</div>
+                                </div>
+                                <div class="glass-card" style="padding: 14px; background: rgba(15, 23, 42, 0.4);">
+                                    <div style="font-size: 11px; color: var(--text-muted);">Repeat Searches</div>
+                                    <div id="engRepeat" style="font-size: 18px; font-weight: 700; color: var(--cyan-400); margin-top: 4px;">135</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 18px; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-muted);">
+                                <strong>Formula:</strong> Engagement Proxy = (normSearches × 0.35) + (normComparisons × 0.25) + (normReviews × 0.20) + (normRecommendations × 0.20) <em>(Measured via real search frequency and intent query touches)</em>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB CONTENT 5: DEMAND ANALYSIS -->
+                    <div id="tabDemand" class="prod-tab-content hidden">
+                        <div class="metrics-row">
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Current Realized Demand</div>
+                                <div id="demandCurrent" class="metric-value">145 units</div>
+                                <span class="metric-badge badge-cyan">Monthly Run-rate</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">AI-Predicted Demand</div>
+                                <div id="demandPredicted" class="metric-value">175 units</div>
+                                <span class="metric-badge badge-green">Synthesized Forecast</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Demand Growth %</div>
+                                <div id="demandGrowth" class="metric-value">+20.7%</div>
+                                <span class="metric-badge badge-purple">Forward Shift</span>
+                            </div>
+                            <div class="glass-card metric-card">
+                                <div class="metric-title">Demand Trend Category</div>
+                                <div id="demandTrendLabel" class="metric-value" style="font-size: 20px; color: var(--cyan-400);">Surging Demand</div>
+                                <span class="metric-badge badge-blue">Trajectory</span>
+                            </div>
+                        </div>
+
+                        <!-- Demand Insights Card -->
+                        <div class="glass-card" style="padding: 24px; margin-bottom: 24px;">
+                            <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">
+                                <i class="fas fa-brain" style="color: var(--cyan-400);"></i> Multi-Signal Demand Analytics Synthesis
+                            </h3>
+                            <p id="demandInsightsText" style="font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+                                Demand synthesized from historical velocity, lead time constraints, and AI search intelligence signals.
+                            </p>
+                            <div style="display: flex; gap: 20px; margin-top: 16px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap;">
+                                <span><i class="fas fa-check"></i> Baseline historical sales run-rate (70% weight)</span>
+                                <span><i class="fas fa-check"></i> Non-linear AI visibility &amp; customer engagement impact</span>
+                                <span><i class="fas fa-check"></i> Information accuracy validation dampener</span>
+                            </div>
+                        </div>
+
+                        <!-- Projected Demand Curve Chart -->
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title"><i class="fas fa-wave-square" style="color: var(--cyan-400);"></i> 6-Month Demand Projection Curve</h3>
+                            </div>
+                            <div class="chart-canvas-wrapper">
+                                <canvas id="projectedDemandChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB CONTENT 6: SMART REORDER RECOMMENDATION -->
+                    <div id="tabReorder" class="prod-tab-content hidden">
+                        <!-- Action Card -->
+                        <div id="reorderActionCard" class="reorder-action-card urgent">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+                                <div>
+                                    <div id="reorderStatusBadge" class="reorder-status-badge recommended">
+                                        <i class="fas fa-bell"></i> REORDER RECOMMENDED
+                                    </div>
+                                    <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 6px;">Supply Chain Inventory Replenishment Decision</h2>
+                                    <p style="font-size: 14px; color: var(--text-secondary);">
+                                        Calculated based on Average Daily Sales, Lead Time, Safety Stock, Current Stock, and AI-predicted Demand.
+                                    </p>
+                                </div>
+                                <button class="btn btn-primary" onclick="simulateOrderPlacement()">
+                                    <i class="fas fa-cart-shopping"></i> Approve Purchase Order
+                                </button>
+                            </div>
+
+                            <div class="reorder-stat-numbers" style="margin-top: 24px;">
+                                <div class="reorder-stat-item">
+                                    <div class="reorder-stat-label">Current Stock</div>
+                                    <div id="recCurrentStock" class="reorder-stat-val">35 units</div>
+                                </div>
+                                <div class="reorder-stat-item">
+                                    <div class="reorder-stat-label">Predicted Demand</div>
+                                    <div id="recPredictedDemand" class="reorder-stat-val">175 units</div>
+                                </div>
+                                <div class="reorder-stat-item">
+                                    <div class="reorder-stat-label">Reorder Level</div>
+                                    <div id="recReorderLevel" class="reorder-stat-val">50 units</div>
+                                </div>
+                                <div class="reorder-stat-item" style="border-color: rgba(244, 63, 94, 0.4);">
+                                    <div class="reorder-stat-label" style="color: var(--rose-500); font-weight: 600;">Recommended Reorder</div>
+                                    <div id="recRecommendedQty" class="reorder-stat-val" style="color: var(--rose-500);">160 units</div>
+                                </div>
+                            </div>
+
+                            <!-- Why? Explanatory Checklist -->
+                            <div style="background: rgba(15, 23, 42, 0.7); padding: 22px; border-radius: var(--radius-md); border: 1px solid rgba(148, 163, 184, 0.1);">
+                                <h3 style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px;">
+                                    Why? System Audit Explanation:
+                                </h3>
+                                <ul id="reorderChecklist" class="reorder-checklist">
+                                    <li class="reorder-checklist-item"><i class="fas fa-check"></i> Sales increased by 25%</li>
+                                    <li class="reorder-checklist-item"><i class="fas fa-check"></i> Visibility increased</li>
+                                    <li class="reorder-checklist-item"><i class="fas fa-check"></i> Engagement increased</li>
+                                    <li class="reorder-checklist-item"><i class="fas fa-check"></i> Current stock is below reorder level</li>
+                                    <li class="reorder-checklist-item"><i class="fas fa-check"></i> Predicted demand is increasing</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================================
+                     VIEW 3: EXECUTIVE DASHBOARD (ALL PRODUCTS & ALERTS)
+                     ======================================================== -->
+                <div id="executiveDashboardView" class="view-panel hidden fade-in">
+                    <!-- Top 7 Cards -->
+                    <div class="metrics-row">
+                        <div class="glass-card metric-card">
+                            <div class="metric-title">Total Mobile Models</div>
+                            <div id="execTotalModels" class="metric-value">26</div>
+                            <span class="metric-badge badge-cyan"><i class="fas fa-mobile"></i> Catalog</span>
+                        </div>
+                        <div class="glass-card metric-card">
+                            <div class="metric-title">Total Units Sold</div>
+                            <div id="execTotalSold" class="metric-value">18,420</div>
+                            <span class="metric-badge badge-blue">Historical Volume</span>
+                        </div>
+                        <div class="glass-card metric-card">
+                            <div class="metric-title">Total Current Stock</div>
+                            <div id="execTotalStock" class="metric-value">1,480</div>
+                            <span class="metric-badge badge-green">Warehouse Buffer</span>
+                        </div>
+                        <div class="glass-card metric-card">
+                            <div class="metric-title">Products to Reorder</div>
+                            <div id="execReorderNeeded" class="metric-value" style="color: var(--rose-500);">6</div>
+                            <span class="metric-badge badge-rose">Urgent Orders</span>
+                        </div>
+                        <div class="glass-card metric-card">
+                            <div class="metric-title">Average Visibility</div>
+                            <div id="execAvgVis" class="metric-value">78.5%</div>
+                            <span class="metric-badge badge-cyan">Search Presence</span>
+                        </div>
+                        <div class="glass-card metric-card">
+                            <div class="metric-title">Average Accuracy</div>
+                            <div id="execAvgAcc" class="metric-value">98.2%</div>
+                            <span class="metric-badge badge-green">Ground-Truth</span>
+                        </div>
+                        <div class="glass-card metric-card">
+                            <div class="metric-title">Average Engagement</div>
+                            <div id="execAvgEng" class="metric-value">81.4%</div>
+                            <span class="metric-badge badge-purple">High Intent</span>
+                        </div>
+                    </div>
+
+                    <!-- System Alerts -->
+                    <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 14px;">
+                        <i class="fas fa-triangle-exclamation" style="color: var(--amber-500);"></i> Active Supply Chain Alerts
+                    </h3>
+                    <div id="alertsContainer" class="alerts-grid">
+                        <!-- Populated dynamically via app.js -->
+                    </div>
+
+                    <!-- Executive Charts Grid -->
+                    <div class="charts-grid-2">
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">1. Aggregate Sales Trend Across Brands</h3>
+                            </div>
+                            <div class="chart-canvas-wrapper"><canvas id="execSalesTrendChart"></canvas></div>
+                        </div>
+
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">2. Sales Volume vs AI Visibility</h3>
+                            </div>
+                            <div class="chart-canvas-wrapper"><canvas id="execSalesVsVisChart"></canvas></div>
+                        </div>
+
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">3. Customer Engagement vs Predicted Demand</h3>
+                            </div>
+                            <div class="chart-canvas-wrapper"><canvas id="execEngVsDemandChart"></canvas></div>
+                        </div>
+
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">4. Current Stock vs Predicted Demand</h3>
+                            </div>
+                            <div class="chart-canvas-wrapper"><canvas id="execStockVsDemandChart"></canvas></div>
+                        </div>
+
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">5. Brand Sales Volume Comparison</h3>
+                            </div>
+                            <div class="chart-canvas-wrapper"><canvas id="execBrandComparisonChart"></canvas></div>
+                        </div>
+
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title">6. Product Velocity Classification Breakdown</h3>
+                            </div>
+                            <div class="chart-canvas-wrapper"><canvas id="execClassificationChart"></canvas></div>
+                        </div>
+                    </div>
+
+                    <!-- Full Catalog Table -->
+                    <div class="glass-card" style="padding: 24px; margin-top: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="font-size: 16px; font-weight: 700;">Live Smartphone Inventory &amp; Reorder Table</h3>
+                            <input type="text" id="catalogSearchInput" class="form-control" placeholder="Search model or brand..." style="max-width: 250px;" oninput="filterCatalogTable(this.value)">
+                        </div>
+
+                        <div class="data-table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Brand</th>
+                                        <th>Model Name</th>
+                                        <th>Price</th>
+                                        <th>Stock</th>
+                                        <th>Monthly Sales</th>
+                                        <th>Pred. Demand</th>
+                                        <th>Visibility</th>
+                                        <th>Accuracy</th>
+                                        <th>Engagement</th>
+                                        <th>Classification</th>
+                                        <th>Reorder Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="catalogTableBody">
+                                    <!-- Populated dynamically via app.js -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================================
+                     VIEW 4: DATA ENTRY & CSV UPLOAD
+                     ======================================================== -->
+                <div id="dataEntryView" class="view-panel hidden fade-in">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 26px;">
+                        <!-- CSV File Upload Section -->
+                        <div class="glass-card" style="padding: 28px;">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                                <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(6, 182, 212, 0.15); display: flex; align-items: center; justify-content: center; color: var(--cyan-400); font-size: 20px;">
+                                    <i class="fas fa-file-csv"></i>
+                                </div>
+                                <div>
+                                    <h2 style="font-size: 18px; font-weight: 700;">Upload CSV / Dataset</h2>
+                                    <p style="font-size: 13px; color: var(--text-secondary);">Automatic validation &amp; multi-signal calculation</p>
+                                </div>
+                            </div>
+
+                            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
+                                The system automatically validates schema headers and calculates Visibility, Accuracy, Engagement, Demand, and Reorder levels with 0 manual effort.
+                            </p>
+
+                            <!-- Drop zone -->
+                            <div id="dropZone" style="border: 2px dashed rgba(148, 163, 184, 0.25); border-radius: var(--radius-md); padding: 36px 20px; text-align: center; cursor: pointer; transition: 0.2s;" onclick="document.getElementById('csvFileInput').click()">
+                                <i class="fas fa-cloud-arrow-up" style="font-size: 38px; color: var(--cyan-400); margin-bottom: 12px;"></i>
+                                <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Click to browse or drop CSV file here</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">Supports standard smartphone dataset .csv</div>
+                                <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleCsvFileSelected(this.files[0])">
+                            </div>
+
+                            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                                <button class="btn btn-secondary" style="flex: 1;" onclick="downloadSampleCsv()">
+                                    <i class="fas fa-file-lines"></i> Sample CSV
+                                </button>
+                                <button class="btn btn-primary" style="flex: 1;" id="uploadCsvBtn" onclick="uploadSelectedCsv()">
+                                    <i class="fas fa-upload"></i> Upload &amp; Analyze
+                                </button>
+                            </div>
+
+                            <div id="uploadResultAlert" class="alert-box alert-success hidden" style="margin-top: 18px; flex-direction: column; align-items: flex-start; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                                    <i class="fas fa-check-circle" id="uploadResultIcon"></i>
+                                    <span id="uploadResultText" style="flex: 1; font-weight: 600;">Processed successfully!</span>
+                                </div>
+                                <button id="viewErrorsBtn" class="btn btn-secondary hidden" style="padding: 5px 10px; font-size: 11px; margin-top: 4px;" onclick="toggleErrorsSection()">
+                                    <i class="fas fa-circle-info"></i> View Errors (<span id="errorsCountBadge">0</span>)
+                                </button>
+                            </div>
+
+                            <!-- Expandable Error Details Table -->
+                            <div id="errorDetailsSection" class="glass-card hidden" style="margin-top: 12px; padding: 14px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: var(--radius-sm); max-height: 240px; overflow-y: auto;">
+                                <div style="font-size: 12px; font-weight: 700; color: var(--rose-500); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-triangle-exclamation"></i> Skipped Rows & Validation Issues:
+                                </div>
+                                <table class="data-table" style="font-size: 11px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Row</th>
+                                            <th>Column</th>
+                                            <th>Value</th>
+                                            <th>Problem</th>
+                                            <th>Suggested Fix</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="errorDetailsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Manual Product Form -->
+                        <div class="glass-card" style="padding: 28px;">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                                <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; color: var(--emerald-500); font-size: 20px;">
+                                    <i class="fas fa-plus-circle"></i>
+                                </div>
+                                <div>
+                                    <h2 style="font-size: 18px; font-weight: 700;">Add Mobile Product</h2>
+                                    <p style="font-size: 13px; color: var(--text-secondary);">Direct form input into JDBC database</p>
+                                </div>
+                            </div>
+
+                            <form id="addProductDirectForm" onsubmit="handleDirectProductSubmit(event)">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                    <div class="form-group">
+                                        <label class="form-label" for="manualBrand">Brand</label>
+                                        <select id="manualBrand" class="form-control" required>
+                                            <option value="Samsung">Samsung</option>
+                                            <option value="Apple">Apple</option>
+                                            <option value="OnePlus">OnePlus</option>
+                                            <option value="Xiaomi">Xiaomi</option>
+                                            <option value="Vivo">Vivo</option>
+                                            <option value="Oppo">Oppo</option>
+                                            <option value="Google Pixel">Google Pixel</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="manualModel">Model Name</label>
+                                        <input type="text" id="manualModel" class="form-control" placeholder="e.g. Galaxy Z Fold 6" required>
+                                    </div>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                    <div class="form-group">
+                                        <label class="form-label" for="manualPrice">Price ($)</label>
+                                        <input type="number" id="manualPrice" step="0.01" class="form-control" placeholder="999.99" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="manualStock">Initial Stock</label>
+                                        <input type="number" id="manualStock" class="form-control" placeholder="50" required>
+                                    </div>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                    <div class="form-group">
+                                        <label class="form-label" for="manualRAM">RAM</label>
+                                        <input type="text" id="manualRAM" class="form-control" placeholder="12GB" value="12GB">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="manualStorage">Storage</label>
+                                        <input type="text" id="manualStorage" class="form-control" placeholder="256GB" value="256GB">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="manualProcessor">Processor</label>
+                                    <input type="text" id="manualProcessor" class="form-control" placeholder="Snapdragon 8 Gen 3" value="Snapdragon 8 Gen 3">
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 10px;">
+                                    <i class="fas fa-save"></i> Save Product &amp; Run Analytics
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgotPasswordModal" class="modal-overlay hidden">
+        <div class="modal-content fade-in" style="max-width: 440px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Password Recovery</h3>
+                <button class="modal-close" onclick="closeForgotPasswordModal()">&times;</button>
+            </div>
+            <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">
+                In this educational demonstration, preconfigured evaluator accounts with full administrative privileges are ready to use:
+            </p>
+            <div style="background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
+                <div><b>1. Admin Account:</b> username: <code style="color: var(--cyan-400);">admin</code> / password: <code style="color: var(--cyan-400);">password123</code></div>
+                <div><b>2. Analyst Account:</b> username: <code style="color: var(--emerald-500);">analyst</code> / password: <code style="color: var(--emerald-500);">analyst123</code></div>
+            </div>
+            <button class="btn btn-primary btn-block" onclick="closeForgotPasswordModal()">Back to Login</button>
+        </div>
+    </div>
+
+    <!-- Application Javascript Logic -->
+    <script src="/js/app.js"></script>
+</body>
+</html>
