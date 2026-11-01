@@ -63,6 +63,7 @@ public class AppServer {
     private final ProductClassifier productClassifier = new ProductClassifier();
     private final RecommendationEngine recommendationEngine = new RecommendationEngine();
     private final AISearchEngine aiSearchEngine = new AISearchEngine();
+    private volatile String lastImportErrorsCsv = null;
 
     public AppServer() throws IOException {
         String envPort = System.getenv("PORT");
@@ -131,6 +132,7 @@ public class AppServer {
         server.createContext("/api/auth/register", new RegisterHandler());
         server.createContext("/api/brands", new BrandsHandler());
         server.createContext("/api/products", new ProductsHandler());
+        server.createContext("/api/products/search", new ProductSearchHandler());
         server.createContext("/api/product/dashboard", new ProductDashboardHandler());
         server.createContext("/api/ai-search/refresh", new AISearchRefreshHandler());
         server.createContext("/api/main-dashboard", new MainDashboardHandler());
@@ -138,6 +140,7 @@ public class AppServer {
         server.createContext("/api/csv/upload", new CsvUploadHandler());
         server.createContext("/api/csv/export", new CsvExportHandler());
         server.createContext("/api/csv/sample", new CsvSampleHandler());
+        server.createContext("/api/csv/errors/download", new CsvErrorsDownloadHandler());
         server.createContext("/api/report/download", new ReportDownloadHandler());
 
         // Static Asset Handler
@@ -264,16 +267,53 @@ public class AppServer {
         public void handle(HttpExchange exchange) throws IOException {
             try {
                 Map<String, String> query = parseQueryParams(exchange.getRequestURI().getQuery());
+                String search = query.get("search");
+                if (search == null || search.isEmpty()) search = query.get("q");
+                if (search == null || search.isEmpty()) search = query.get("query");
                 String brand = query.get("brand");
 
                 List<MobileProduct> products;
-                if (brand != null && !brand.trim().isEmpty()) {
+                if (search != null && !search.trim().isEmpty()) {
+                    products = productDAO.searchProducts(search.trim());
+                } else if (brand != null && !brand.trim().isEmpty()) {
                     products = productDAO.getProductsByBrand(brand);
                 } else {
                     products = productDAO.getAllProducts();
                 }
-                sendJsonResponse(exchange, 200, Map.of("success", true, "products", products));
+                sendJsonResponse(exchange, 200, Map.of(
+                        "success", true,
+                        "count", products.size(),
+                        "products", products
+                ));
             } catch (Exception e) {
+                sendJsonResponse(exchange, 500, Map.of("success", false, "error", e.getMessage()));
+            }
+        }
+    }
+
+    private class ProductSearchHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                Map<String, String> query = parseQueryParams(exchange.getRequestURI().getQuery());
+                String q = query.get("q");
+                if (q == null || q.isEmpty()) q = query.get("query");
+                if (q == null || q.isEmpty()) q = query.get("search");
+
+                if (q == null || q.trim().isEmpty()) {
+                    sendJsonResponse(exchange, 200, Map.of("success", true, "count", 0, "products", List.of()));
+                    return;
+                }
+
+                List<MobileProduct> products = productDAO.searchProducts(q.trim());
+                sendJsonResponse(exchange, 200, Map.of(
+                        "success", true,
+                        "query", q.trim(),
+                        "count", products.size(),
+                        "products", products
+                ));
+            } catch (Exception e) {
+                LOGGER.severe("Product search error: " + e.getMessage());
                 sendJsonResponse(exchange, 500, Map.of("success", false, "error", e.getMessage()));
             }
         }
@@ -617,13 +657,17 @@ public class AppServer {
                 CSVDataImporter importer = new CSVDataImporter();
                 CSVDataImporter.ImportResult result = importer.importCSVStream(bais);
 
+                lastImportErrorsCsv = result.generateErrorsCsv();
+
                 Map<String, Object> resp = new HashMap<>();
                 resp.put("success", true);
+                resp.put("totalRowsDetected", result.getTotalRowsDetected());
                 resp.put("productsImported", result.getProductsImported());
                 resp.put("rowsSkipped", result.getRowsSkipped());
                 resp.put("errorsEncountered", result.getErrorsEncountered());
                 resp.put("messages", result.getMessages());
                 resp.put("errorDetails", result.getErrorDetails());
+                resp.put("errorsCsv", lastImportErrorsCsv);
 
                 sendJsonResponse(exchange, 200, resp);
 
@@ -648,6 +692,29 @@ public class AppServer {
                 }
             }
             return raw;
+        }
+    }
+
+    private class CsvErrorsDownloadHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                Headers headers = exchange.getResponseHeaders();
+                headers.set("Content-Type", "text/csv; charset=UTF-8");
+                headers.set("Content-Disposition", "attachment; filename=\"csv_validation_errors.csv\"");
+
+                String csv = (lastImportErrorsCsv != null && !lastImportErrorsCsv.isEmpty()) ?
+                        lastImportErrorsCsv :
+                        "Row Number,Column,Actual Value,Failure Reason,Suggested Correction,Original Row Data\n";
+
+                byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, bytes.length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(bytes);
+                }
+            } catch (Exception e) {
+                sendResponse(exchange, 500, "Error generating error report: " + e.getMessage());
+            }
         }
     }
 

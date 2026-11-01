@@ -166,6 +166,66 @@ public class MobileProductDAO {
         return 0;
     }
 
+    public List<MobileProduct> searchProducts(String query) throws SQLException {
+        List<MobileProduct> products = new ArrayList<>();
+        if (query == null || query.trim().isEmpty()) {
+            return products;
+        }
+
+        String cleanQuery = query.trim().replaceAll("\\s+", " ");
+        String[] words = cleanQuery.split(" ");
+        String fullPattern = "%" + cleanQuery.toLowerCase() + "%";
+
+        StringBuilder whereSql = new StringBuilder();
+        List<String> params = new ArrayList<>();
+
+        // Multi-token matching: each word must match either brand, model_name, or category
+        for (int i = 0; i < words.length; i++) {
+            if (i > 0) whereSql.append(" AND ");
+            whereSql.append("(LOWER(p.brand) LIKE ? OR LOWER(p.model_name) LIKE ? OR LOWER(p.category) LIKE ?)");
+            String wPattern = "%" + words[i].toLowerCase() + "%";
+            params.add(wPattern);
+            params.add(wPattern);
+            params.add(wPattern);
+        }
+
+        String sql = "SELECT p.*, " +
+                "COALESCE(i.current_stock, 0) AS current_stock, " +
+                "COALESCE(i.inventory_status, 'In Stock') AS inventory_status, " +
+                "COALESCE(s.current_monthly_sales, 0) AS current_monthly_sales, " +
+                "COALESCE(s.revenue, 0.0) AS revenue, " +
+                "COALESCE(s.sales_trend, 'Stable') AS sales_trend " +
+                "FROM mobile_product p " +
+                "LEFT JOIN inventory i ON p.product_id = i.product_id " +
+                "LEFT JOIN sales s ON p.product_id = s.product_id " +
+                "WHERE " + whereSql + " " +
+                "ORDER BY " +
+                "  CASE " +
+                "    WHEN LOWER(TRIM(p.model_name)) = LOWER(?) THEN 1 " +
+                "    WHEN LOWER(TRIM(p.brand)) = LOWER(?) THEN 2 " +
+                "    WHEN LOWER(p.model_name) LIKE LOWER(?) THEN 3 " +
+                "    ELSE 4 " +
+                "  END, p.brand ASC, p.model_name ASC";
+
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            int pIndex = 1;
+            for (String pVal : params) {
+                pstmt.setString(pIndex++, pVal);
+            }
+            pstmt.setString(pIndex++, cleanQuery.toLowerCase());
+            pstmt.setString(pIndex++, cleanQuery.toLowerCase());
+            pstmt.setString(pIndex++, cleanQuery.toLowerCase() + "%");
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    products.add(mapResultSetToProduct(rs));
+                }
+            }
+        }
+        return products;
+    }
+
     private MobileProduct mapResultSetToProduct(ResultSet rs) throws SQLException {
         MobileProduct p = new MobileProduct();
         p.setProductId(rs.getInt("product_id"));
@@ -189,6 +249,26 @@ public class MobileProductDAO {
         p.setCamera(rs.getString("camera"));
         p.setOs(rs.getString("os"));
         p.setNetwork(rs.getString("network"));
+
+        // Enriched search & reporting fields if returned in joined query
+        try {
+            p.setCurrentStock(rs.getInt("current_stock"));
+        } catch (SQLException ignored) {}
+        try {
+            String invStatus = rs.getString("inventory_status");
+            if (invStatus != null) p.setInventoryStatus(invStatus);
+        } catch (SQLException ignored) {}
+        try {
+            p.setMonthlySales(rs.getInt("current_monthly_sales"));
+        } catch (SQLException ignored) {}
+        try {
+            p.setRevenue(rs.getDouble("revenue"));
+        } catch (SQLException ignored) {}
+        try {
+            String trend = rs.getString("sales_trend");
+            if (trend != null) p.setSalesTrend(trend);
+        } catch (SQLException ignored) {}
+
         return p;
     }
 }

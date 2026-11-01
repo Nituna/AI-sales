@@ -86,6 +86,6 @@ public abstract class Product implements Serializable {
 
     @Override
     public String toString() {
-        return brand + " " + modelName + " ($" + price + ")";
+        return brand + " " + modelName + " (₹" + price + ")";
     }
 }

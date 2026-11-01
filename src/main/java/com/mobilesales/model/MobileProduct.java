@@ -18,6 +18,14 @@ public class MobileProduct extends Product {
     private String os;
     private String network;
 
+    // Enriched attributes for search, reporting & inventory queries
+    private int currentStock;
+    private String inventoryStatus;
+    private int monthlySales;
+    private double revenue;
+    private String salesTrend;
+    private String imageUrl;
+
     public MobileProduct() {
         super();
         this.category = "Smartphone";
@@ -119,6 +127,54 @@ public class MobileProduct extends Product {
 
     public void setNetwork(String network) {
         this.network = network;
+    }
+
+    public int getCurrentStock() {
+        return currentStock;
+    }
+
+    public void setCurrentStock(int currentStock) {
+        this.currentStock = currentStock;
+    }
+
+    public String getInventoryStatus() {
+        return inventoryStatus;
+    }
+
+    public void setInventoryStatus(String inventoryStatus) {
+        this.inventoryStatus = inventoryStatus;
+    }
+
+    public int getMonthlySales() {
+        return monthlySales;
+    }
+
+    public void setMonthlySales(int monthlySales) {
+        this.monthlySales = monthlySales;
+    }
+
+    public double getRevenue() {
+        return revenue;
+    }
+
+    public void setRevenue(double revenue) {
+        this.revenue = revenue;
+    }
+
+    public String getSalesTrend() {
+        return salesTrend;
+    }
+
+    public void setSalesTrend(String salesTrend) {
+        this.salesTrend = salesTrend;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     @Override

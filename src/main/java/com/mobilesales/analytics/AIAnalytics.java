@@ -1,13 +1,14 @@
 package com.mobilesales.analytics;
 
-import com.mobilesales.model.AISearchData;
-import com.mobilesales.model.MobileProduct;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.mobilesales.model.AISearchData;
+import com.mobilesales.model.MobileProduct;
+
 /**
- * AIAnalytics aggregates Visibility, Accuracy, and Customer Engagement analyzers.
- * Demonstrates Polymorphism and Composition.
+ * AIAnalytics aggregates Visibility, Accuracy, and Customer Engagement
+ * analyzers. Demonstrates Polymorphism and Composition.
  */
 public class AIAnalytics implements Analytics<AISearchData, Map<String, Object>> {
 
@@ -29,7 +30,9 @@ public class AIAnalytics implements Analytics<AISearchData, Map<String, Object>>
     @Override
     public Map<String, Object> analyze(AISearchData data) {
         Map<String, Object> combined = new HashMap<>();
-        if (data == null) return combined;
+        if (data == null) {
+            return combined;
+        }
 
         Map<String, Object> vis = visibilityAnalyzer.analyzeVisibility(data);
         Map<String, Object> eng = engagementAnalyzer.analyzeEngagement(data);

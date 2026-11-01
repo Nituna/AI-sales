@@ -52,15 +52,21 @@ public class CSVDataImporter {
         private String value;
         private String problem;
         private String suggestedFix;
+        private String rawLine;
 
         public ErrorDetail() {}
 
         public ErrorDetail(int rowNumber, String column, String value, String problem, String suggestedFix) {
+            this(rowNumber, column, value, problem, suggestedFix, "");
+        }
+
+        public ErrorDetail(int rowNumber, String column, String value, String problem, String suggestedFix, String rawLine) {
             this.rowNumber = rowNumber;
             this.column = column;
             this.value = value;
             this.problem = problem;
             this.suggestedFix = suggestedFix;
+            this.rawLine = rawLine != null ? rawLine : "";
         }
 
         public int getRowNumber() { return rowNumber; }
@@ -73,16 +79,21 @@ public class CSVDataImporter {
         public void setProblem(String problem) { this.problem = problem; }
         public String getSuggestedFix() { return suggestedFix; }
         public void setSuggestedFix(String suggestedFix) { this.suggestedFix = suggestedFix; }
+        public String getRawLine() { return rawLine; }
+        public void setRawLine(String rawLine) { this.rawLine = rawLine; }
     }
 
     public static class ImportResult implements Serializable {
         private static final long serialVersionUID = 1L;
+        private int totalRowsDetected = 0;
         private int productsImported = 0;
         private int rowsSkipped = 0;
         private int errorsEncountered = 0;
         private final List<String> messages = new ArrayList<>();
         private final List<ErrorDetail> errorDetails = new ArrayList<>();
 
+        public int getTotalRowsDetected() { return totalRowsDetected; }
+        public void setTotalRowsDetected(int totalRowsDetected) { this.totalRowsDetected = totalRowsDetected; }
         public int getProductsImported() { return productsImported; }
         public void setProductsImported(int productsImported) { this.productsImported = productsImported; }
         public int getRowsSkipped() { return rowsSkipped; }
@@ -91,6 +102,25 @@ public class CSVDataImporter {
         public void setErrorsEncountered(int errorsEncountered) { this.errorsEncountered = errorsEncountered; }
         public List<String> getMessages() { return messages; }
         public List<ErrorDetail> getErrorDetails() { return errorDetails; }
+
+        public String generateErrorsCsv() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Row Number,Column,Actual Value,Failure Reason,Suggested Correction,Original Row Data\n");
+            for (ErrorDetail err : errorDetails) {
+                sb.append(err.getRowNumber()).append(",")
+                  .append("\"").append(escapeCsv(err.getColumn())).append("\",")
+                  .append("\"").append(escapeCsv(err.getValue())).append("\",")
+                  .append("\"").append(escapeCsv(err.getProblem())).append("\",")
+                  .append("\"").append(escapeCsv(err.getSuggestedFix())).append("\",")
+                  .append("\"").append(escapeCsv(err.getRawLine())).append("\"\n");
+            }
+            return sb.toString();
+        }
+
+        private String escapeCsv(String val) {
+            if (val == null) return "";
+            return val.replace("\"", "\"\"");
+        }
     }
 
     public ImportResult importCSV(File csvFile) throws DataValidationException {
@@ -135,6 +165,7 @@ public class CSVDataImporter {
 
             if (!hasHeader) {
                 // First line is actually a data row! Process it with default positional mapping
+                result.setTotalRowsDetected(result.getTotalRowsDetected() + 1);
                 processDataRow(firstLine, delimiter, colMap, lineNum, result, demandEngine, classifier, recEngine);
             }
 
@@ -145,6 +176,7 @@ public class CSVDataImporter {
                 if (line.isEmpty() || line.startsWith("#")) {
                     continue;
                 }
+                result.setTotalRowsDetected(result.getTotalRowsDetected() + 1);
                 processDataRow(line, delimiter, colMap, lineNum, result, demandEngine, classifier, recEngine);
             }
 
@@ -166,8 +198,7 @@ public class CSVDataImporter {
             return;
         }
 
-        // 1. Extract and Clean Brand
-        // 1. Extract and Clean Brand
+        // 1. Extract and Clean Brand and Model
         String rawBrand = getMappedValue(tokens, colMap, "BRAND");
         String rawModel = getMappedValue(tokens, colMap, "MODEL");
 
@@ -180,8 +211,8 @@ public class CSVDataImporter {
         if (rawBrand == null || rawBrand.trim().isEmpty()) {
             result.setRowsSkipped(result.getRowsSkipped() + 1);
             result.getErrorDetails().add(new ErrorDetail(
-                    lineNum, "Brand", "(empty)", "Required field missing",
-                    "Specify a smartphone brand (e.g. Samsung, Apple, OnePlus)"));
+                    lineNum, "Brand", "(empty)", "Required brand name is missing",
+                    "Specify a smartphone brand (e.g. Samsung, Apple, OnePlus)", line));
             return;
         }
 
@@ -189,26 +220,33 @@ public class CSVDataImporter {
         if (rawModel == null || rawModel.trim().isEmpty()) {
             result.setRowsSkipped(result.getRowsSkipped() + 1);
             result.getErrorDetails().add(new ErrorDetail(
-                    lineNum, "Model Name", "(empty)", "Required field missing",
-                    "Specify a smartphone model name (e.g. Galaxy S24 Ultra)"));
+                    lineNum, "Model Name", "(empty)", "Required model name is missing",
+                    "Specify a smartphone model name (e.g. Galaxy S24 Ultra)", line));
             return;
         }
 
         String brand = normalizeBrand(rawBrand);
         String modelName = cleanText(rawModel);
 
-        // 2. Extract and Validate Price
+        // 2. Extract and Validate Price (Strict: Do not invent missing prices)
         String rawPrice = getMappedValue(tokens, colMap, "PRICE");
-        Double priceVal = extractNumber(rawPrice);
-        if (rawPrice != null && !rawPrice.trim().isEmpty() && priceVal == null) {
-            // Provided non-numeric price string like "abc"
+        if (rawPrice == null || rawPrice.trim().isEmpty()) {
             result.setRowsSkipped(result.getRowsSkipped() + 1);
             result.getErrorDetails().add(new ErrorDetail(
-                    lineNum, "Price", rawPrice, "Invalid numeric value",
-                    "Enter a numeric price such as 499.99 or 39999"));
+                    lineNum, "Price", "(empty)", "Required price is missing",
+                    "Enter a positive numeric price such as 499.99 or 39999", line));
             return;
         }
-        double price = (priceVal != null && priceVal > 0) ? priceVal : getEstimatedPrice(brand, modelName);
+
+        Double priceVal = cleanPrice(rawPrice);
+        if (priceVal == null || priceVal <= 0) {
+            result.setRowsSkipped(result.getRowsSkipped() + 1);
+            result.getErrorDetails().add(new ErrorDetail(
+                    lineNum, "Price", rawPrice, "Invalid numeric price value",
+                    "Enter a positive numeric price such as 499.99 or 39999 without text", line));
+            return;
+        }
+        double price = priceVal;
 
         // 3. Extract Hardware Specs with Safe Defaults
         String category = getMappedValue(tokens, colMap, "CATEGORY");
@@ -241,7 +279,7 @@ public class CSVDataImporter {
             result.setRowsSkipped(result.getRowsSkipped() + 1);
             result.getErrorDetails().add(new ErrorDetail(
                     lineNum, "Sales", rawSales, "Invalid numeric value",
-                    "Enter a numeric sales volume (e.g. 500)"));
+                    "Enter a numeric sales volume (e.g. 500)", line));
             return;
         }
         int h = Math.abs((brand + " " + modelName).hashCode());
@@ -273,7 +311,7 @@ public class CSVDataImporter {
             result.setRowsSkipped(result.getRowsSkipped() + 1);
             result.getErrorDetails().add(new ErrorDetail(
                     lineNum, "Current Stock", rawStock, "Invalid numeric value",
-                    "Enter a numeric inventory stock count (e.g. 80)"));
+                    "Enter a numeric inventory stock count (e.g. 80)", line));
             return;
         }
         double coverage = 0.40 + ((h % 120) / 100.0);
@@ -397,7 +435,7 @@ public class CSVDataImporter {
             result.setRowsSkipped(result.getRowsSkipped() + 1);
             result.getErrorDetails().add(new ErrorDetail(
                     lineNum, "Database", modelName, "Database error: " + ex.getMessage(),
-                    "Check database constraints and field types"));
+                    "Check database constraints and field types", line));
         }
     }
 
@@ -414,13 +452,13 @@ public class CSVDataImporter {
             if (raw.endsWith("_")) raw = raw.substring(0, raw.length() - 1);
 
             assignFieldIfMatch(map, raw, i, "BRAND",
-                    "brand", "brand_name", "company", "make", "manufacturer", "brand_model", "oem");
+                    "brand", "brand_name", "brandname", "company", "make", "manufacturer", "brand_model", "oem", "vendor");
             assignFieldIfMatch(map, raw, i, "MODEL",
-                    "model", "model_name", "phone_model", "product_name", "name", "device", "mobile_name", "product", "title", "phone", "smartphone");
+                    "model", "model_name", "modelname", "phone_model", "product_name", "productname", "device_name", "device", "mobile_name", "product", "title", "name", "phone", "smartphone", "item_name");
             assignFieldIfMatch(map, raw, i, "CATEGORY",
-                    "category", "type", "segment", "tier", "series");
+                    "category", "product_category", "type", "segment", "tier", "series", "class");
             assignFieldIfMatch(map, raw, i, "PRICE",
-                    "price", "selling_price", "price_inr", "cost", "mrp", "retail_price", "price_usd", "rate", "final_price", "discount_price", "original_price");
+                    "price", "selling_price", "sellingprice", "product_price", "productprice", "price_inr", "price_usd", "cost", "mrp", "retail_price", "rate", "final_price", "discount_price", "original_price", "unit_price", "amount");
             assignFieldIfMatch(map, raw, i, "RAM",
                     "ram", "ram_gb", "ram_capacity", "memory", "ram_memory", "system_ram");
             assignFieldIfMatch(map, raw, i, "STORAGE",
@@ -436,13 +474,13 @@ public class CSVDataImporter {
             assignFieldIfMatch(map, raw, i, "OS",
                     "os", "operating_system", "platform");
             assignFieldIfMatch(map, raw, i, "NETWORK",
-                    "network", "connectivity", "has_5g");
+                    "network", "connectivity", "has_5g", "sim");
             assignFieldIfMatch(map, raw, i, "SALES",
                     "sales", "units_sold", "quantity_sold", "monthly_sales", "volume", "sold", "units", "sales_units");
             assignFieldIfMatch(map, raw, i, "PREV_SALES",
                     "previous_month_sales", "prev_monthly_sales", "prev_sales", "last_month_sales");
             assignFieldIfMatch(map, raw, i, "STOCK",
-                    "current_stock", "stock", "inventory", "units_in_stock", "quantity_available", "available_stock");
+                    "current_stock", "stock", "inventory", "units_in_stock", "quantity_available", "available_stock", "qty", "quantity", "stock_quantity");
             assignFieldIfMatch(map, raw, i, "SAFETY_STOCK",
                     "safety_stock", "buffer_stock", "min_stock");
             assignFieldIfMatch(map, raw, i, "LEAD_TIME",
@@ -459,10 +497,12 @@ public class CSVDataImporter {
                     "appearances", "product_appearances", "impressions");
         }
 
-        // If no BRAND or MODEL mapped, check positional defaults
-        if (!map.containsKey("BRAND") && headers.size() > 0) map.put("BRAND", 0);
-        if (!map.containsKey("MODEL") && headers.size() > 1) map.put("MODEL", 1);
-        if (!map.containsKey("PRICE") && headers.size() > 2) map.put("PRICE", 2);
+        // Positional defaults only if NO headers were recognized at all
+        if (!map.containsKey("BRAND") && !map.containsKey("MODEL") && !map.containsKey("PRICE")) {
+            if (headers.size() > 0) map.put("BRAND", 0);
+            if (headers.size() > 1) map.put("MODEL", 1);
+            if (headers.size() > 2) map.put("PRICE", 2);
+        }
 
         return map;
     }
@@ -542,6 +582,27 @@ public class CSVDataImporter {
     // DATA CLEANERS & TYPE CONVERTERS
     // ==========================================
 
+    public static Double cleanPrice(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return null;
+        String clean = raw.trim();
+        // Remove currency symbols (INR ₹, USD $, EUR €, GBP £, etc.), commas, quotes, replacement chars
+        clean = clean.replaceAll("[₹$€£¥,\"\']", "");
+        clean = clean.replaceAll("[^0-9.]", "");
+        if (clean.isEmpty()) return null;
+        int firstDot = clean.indexOf('.');
+        if (firstDot != -1) {
+            String before = clean.substring(0, firstDot);
+            String after = clean.substring(firstDot + 1).replace(".", "");
+            clean = before + "." + after;
+        }
+        try {
+            double val = Double.parseDouble(clean);
+            return val > 0 ? val : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     public static Double extractNumber(String raw) {
         if (raw == null || raw.trim().isEmpty()) return null;
         String clean = raw.trim();
@@ -558,13 +619,15 @@ public class CSVDataImporter {
         return null;
     }
 
-    private String normalizeBrand(String brand) {
+    public static String normalizeBrand(String brand) {
         if (brand == null || brand.trim().isEmpty()) return "Other";
         String b = brand.trim().toLowerCase();
 
         if (b.contains("samsung")) return "Samsung";
         if (b.contains("apple") || b.contains("iphone")) return "Apple";
         if (b.contains("oneplus")) return "OnePlus";
+        if (b.contains("poco")) return "POCO";
+        if (b.contains("iqoo")) return "iQOO";
         if (b.contains("xiaomi") || b.contains("redmi") || b.contains("mi")) return "Xiaomi";
         if (b.contains("vivo")) return "Vivo";
         if (b.contains("oppo")) return "Oppo";
@@ -572,32 +635,54 @@ public class CSVDataImporter {
         if (b.contains("realme")) return "Realme";
         if (b.contains("motorola") || b.contains("moto")) return "Motorola";
         if (b.contains("nothing")) return "Nothing";
-        if (b.contains("poco")) return "POCO";
-        if (b.contains("iqoo")) return "iQOO";
         if (b.contains("honor")) return "Honor";
         if (b.contains("asus")) return "Asus";
         if (b.contains("sony")) return "Sony";
+        if (b.contains("infinix")) return "Infinix";
+        if (b.contains("tecno")) return "Tecno";
+        if (b.contains("nokia")) return "Nokia";
+        if (b.contains("lava")) return "Lava";
+        if (b.contains("micromax")) return "Micromax";
+        if (b.contains("huawei")) return "Huawei";
+        if (b.contains("zte")) return "ZTE";
+        if (b.contains("lenovo")) return "Lenovo";
 
         // Title case for any other brand
         return Character.toUpperCase(b.charAt(0)) + (b.length() > 1 ? b.substring(1) : "");
     }
 
-    private String deduceBrandFromModel(String model) {
+    public static String deduceBrandFromModel(String model) {
         if (model == null || model.trim().isEmpty()) return null;
-        String m = model.toLowerCase();
-        if (m.contains("galaxy") || m.contains("samsung")) return "Samsung";
-        if (m.contains("iphone") || m.contains("apple")) return "Apple";
-        if (m.contains("oneplus") || m.contains("nord")) return "OnePlus";
-        if (m.contains("redmi") || m.contains("xiaomi") || m.contains("poco")) return "Xiaomi";
-        if (m.contains("vivo") || m.contains("iqoo")) return "Vivo";
-        if (m.contains("oppo") || m.contains("reno") || m.contains("find")) return "Oppo";
-        if (m.contains("pixel")) return "Google Pixel";
-        if (m.contains("motorola") || m.contains("edge") || m.contains("moto")) return "Motorola";
-        if (m.contains("realme")) return "Realme";
-        if (m.contains("nothing")) return "Nothing";
-        if (m.contains("honor")) return "Honor";
-        if (m.contains("asus") || m.contains("rog")) return "Asus";
-        if (m.contains("sony") || m.contains("xperia")) return "Sony";
+        String m = model.toLowerCase().trim();
+        if (m.startsWith("samsung") || m.contains("galaxy")) return "Samsung";
+        if (m.startsWith("apple") || m.startsWith("iphone") || m.contains("iphone")) return "Apple";
+        if (m.startsWith("oneplus") || m.contains("oneplus") || m.contains("nord")) return "OnePlus";
+        if (m.startsWith("poco") || m.contains("poco")) return "POCO";
+        if (m.startsWith("iqoo") || m.contains("iqoo")) return "iQOO";
+        if (m.startsWith("xiaomi") || m.startsWith("redmi") || m.startsWith("mi ") || m.contains("xiaomi") || m.contains("redmi")) return "Xiaomi";
+        if (m.startsWith("vivo") || m.contains("vivo")) return "Vivo";
+        if (m.startsWith("oppo") || m.contains("oppo") || m.contains("reno") || m.contains("find")) return "Oppo";
+        if (m.startsWith("google") || m.startsWith("pixel") || m.contains("pixel")) return "Google Pixel";
+        if (m.startsWith("motorola") || m.startsWith("moto") || m.contains("motorola") || m.contains("moto")) return "Motorola";
+        if (m.startsWith("realme") || m.contains("realme") || m.contains("narzo")) return "Realme";
+        if (m.startsWith("nothing") || m.contains("nothing")) return "Nothing";
+        if (m.startsWith("honor") || m.contains("honor")) return "Honor";
+        if (m.startsWith("asus") || m.contains("asus") || m.contains("rog")) return "Asus";
+        if (m.startsWith("sony") || m.contains("sony") || m.contains("xperia")) return "Sony";
+        if (m.startsWith("infinix") || m.contains("infinix")) return "Infinix";
+        if (m.startsWith("tecno") || m.contains("tecno")) return "Tecno";
+        if (m.startsWith("nokia") || m.contains("nokia")) return "Nokia";
+        if (m.startsWith("lava") || m.contains("lava")) return "Lava";
+        if (m.startsWith("micromax") || m.contains("micromax")) return "Micromax";
+        if (m.startsWith("huawei") || m.contains("huawei")) return "Huawei";
+        if (m.startsWith("zte") || m.contains("zte") || m.contains("nubia") || m.contains("redmagic")) return "ZTE";
+        if (m.startsWith("lenovo") || m.contains("lenovo")) return "Lenovo";
+
+        // If no known brand matches, take the first word as brand candidate if it's a valid alphabetic word
+        String[] parts = model.trim().split("\\s+");
+        if (parts.length > 1 && parts[0].matches("[a-zA-Z]{2,}")) {
+            return Character.toUpperCase(parts[0].charAt(0)) + parts[0].substring(1).toLowerCase();
+        }
         return null;
     }
 

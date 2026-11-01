@@ -119,8 +119,10 @@ public class ReportGenerator {
         }
 
         sb.append("## 3. Product Catalog Breakdown\n\n");
-        sb.append("| Brand | Model | Price | Stock | Monthly Sales | Growth | Visibility | Accuracy | Engagement | Classification | Action |\n");
+        sb.append("| Brand | Model | Price (₹) | Stock | Monthly Sales | Growth | Visibility | Accuracy | Engagement | Classification | Action |\n");
         sb.append("|---|---|---|---|---|---|---|---|---|---|---|\n");
+
+        java.text.NumberFormat inrFormat = java.text.NumberFormat.getCurrencyInstance(new java.util.Locale("en", "IN"));
 
         for (MobileProduct p : products) {
             int pid = p.getProductId();
@@ -130,10 +132,10 @@ public class ReportGenerator {
             Map<String, Object> an = analyticsDAO.getAnalyticsByProductId(pid);
             ReorderRecommendation rec = recommendationDAO.getRecommendationByProductId(pid);
 
-            sb.append(String.format("| %s | %s | $%.2f | %d | %d | %+.1f%% | %.1f%% | %.1f%% | %.1f%% | %s | **%s** |\n",
+            sb.append(String.format("| %s | %s | %s | %d | %d | %+.1f%% | %.1f%% | %.1f%% | %.1f%% | %s | **%s** |\n",
                     p.getBrand(),
                     p.getModelName(),
-                    p.getPrice(),
+                    inrFormat.format(p.getPrice()),
                     inv != null ? inv.getCurrentStock() : 0,
                     s != null ? s.getCurrentMonthlySales() : 0,
                     s != null ? s.getSalesGrowthPct() : 0.0,

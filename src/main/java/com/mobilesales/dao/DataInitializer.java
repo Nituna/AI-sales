@@ -63,7 +63,23 @@ public class DataInitializer {
                 // Seed customized sales, inventory, and AI search data for each phone
                 seedProductEcosystem(p, salesDAO, inventoryDAO, aiDAO, analyticsDAO, recommendationDAO);
             }
-            LOGGER.info("Successfully synchronized " + seedProducts.size() + " smartphones across 7 brands with product-specific analytics.");
+
+            // Currency conversion: convert any existing products previously stored in USD (< 2000) to INR (exchange rate: 83.50)
+            List<MobileProduct> allExisting = productDAO.getAllProducts();
+            for (MobileProduct ep : allExisting) {
+                if (ep.getPrice() > 0 && ep.getPrice() < 2000.0) {
+                    double inrPrice = Math.round(ep.getPrice() * 83.50 * 100.0) / 100.0;
+                    ep.setPrice(inrPrice);
+                    productDAO.updateProduct(ep);
+                    Sales es = salesDAO.getSalesByProductId(ep.getProductId());
+                    if (es != null) {
+                        es.setRevenue(es.getCurrentMonthlySales() * inrPrice);
+                        salesDAO.addOrUpdateSales(es);
+                    }
+                }
+            }
+
+            LOGGER.info("Successfully synchronized " + seedProducts.size() + " smartphones across 7 brands with product-specific analytics in INR.");
         } catch (Exception e) {
             LOGGER.severe("Error during database seeding: " + e.getMessage());
         }
@@ -418,77 +434,77 @@ public class DataInitializer {
         List<MobileProduct> list = new ArrayList<>();
 
         // Samsung
-        list.add(new MobileProduct(0, "Samsung", "Galaxy S24 Ultra", "Flagship", 1299.99, LocalDate.of(2024, 1, 24),
+        list.add(new MobileProduct(0, "Samsung", "Galaxy S24 Ultra", "Flagship", 129999.00, LocalDate.of(2024, 1, 24),
                 "12GB", "512GB", "Snapdragon 8 Gen 3 for Galaxy", "5000 mAh", "6.8\" Dynamic AMOLED 2X 120Hz", "200MP + 50MP + 12MP + 10MP", "Android 14 / One UI 6.1", "5G"));
-        list.add(new MobileProduct(0, "Samsung", "Galaxy S25", "Flagship", 899.99, LocalDate.of(2025, 2, 10),
+        list.add(new MobileProduct(0, "Samsung", "Galaxy S25", "Flagship", 79999.00, LocalDate.of(2025, 2, 10),
                 "12GB", "256GB", "Snapdragon 8 Elite", "4000 mAh", "6.2\" Dynamic AMOLED 2X 120Hz", "50MP + 10MP + 12MP", "Android 15 / One UI 7", "5G"));
-        list.add(new MobileProduct(0, "Samsung", "Galaxy A56", "Mid-Range", 449.99, LocalDate.of(2025, 3, 15),
+        list.add(new MobileProduct(0, "Samsung", "Galaxy A56", "Mid-Range", 39999.00, LocalDate.of(2025, 3, 15),
                 "8GB", "256GB", "Exynos 1580", "5000 mAh", "6.6\" Super AMOLED 120Hz", "50MP OIS + 12MP + 5MP", "Android 15 / One UI 7", "5G"));
-        list.add(new MobileProduct(0, "Samsung", "Galaxy A36", "Budget Mid-Range", 329.99, LocalDate.of(2025, 3, 20),
+        list.add(new MobileProduct(0, "Samsung", "Galaxy A36", "Budget Mid-Range", 27499.00, LocalDate.of(2025, 3, 20),
                 "6GB", "128GB", "Snapdragon 6 Gen 3", "5000 mAh", "6.5\" Super AMOLED 120Hz", "50MP + 8MP + 2MP", "Android 15 / One UI 7", "5G"));
-        list.add(new MobileProduct(0, "Samsung", "Galaxy M Series (M55)", "Budget", 289.99, LocalDate.of(2024, 4, 10),
+        list.add(new MobileProduct(0, "Samsung", "Galaxy M Series (M55)", "Budget", 24999.00, LocalDate.of(2024, 4, 10),
                 "8GB", "128GB", "Snapdragon 7 Gen 1", "5000 mAh", "6.7\" Super AMOLED+ 120Hz", "50MP OIS + 8MP + 2MP", "Android 14 / One UI 6", "5G"));
 
         // Apple
-        list.add(new MobileProduct(0, "Apple", "iPhone 16 Pro Max", "Flagship", 1199.99, LocalDate.of(2024, 9, 20),
+        list.add(new MobileProduct(0, "Apple", "iPhone 16 Pro Max", "Flagship", 144900.00, LocalDate.of(2024, 9, 20),
                 "8GB", "256GB", "Apple A18 Pro", "4685 mAh", "6.9\" Super Retina XDR OLED ProMotion", "48MP Fusion + 48MP Ultra-Wide + 12MP 5x Telephoto", "iOS 18", "5G"));
-        list.add(new MobileProduct(0, "Apple", "iPhone 16", "Premium", 799.99, LocalDate.of(2024, 9, 20),
+        list.add(new MobileProduct(0, "Apple", "iPhone 16", "Premium", 79900.00, LocalDate.of(2024, 9, 20),
                 "8GB", "128GB", "Apple A18", "3561 mAh", "6.1\" Super Retina XDR OLED", "48MP Fusion + 12MP Ultra-Wide", "iOS 18", "5G"));
-        list.add(new MobileProduct(0, "Apple", "iPhone 15 Pro", "Flagship", 999.99, LocalDate.of(2023, 9, 22),
+        list.add(new MobileProduct(0, "Apple", "iPhone 15 Pro", "Flagship", 119900.00, LocalDate.of(2023, 9, 22),
                 "8GB", "128GB", "Apple A17 Pro", "3274 mAh", "6.1\" Super Retina XDR OLED ProMotion", "48MP Main + 12MP Ultra-Wide + 12MP 3x", "iOS 17", "5G"));
-        list.add(new MobileProduct(0, "Apple", "iPhone 15", "Premium", 699.99, LocalDate.of(2023, 9, 22),
+        list.add(new MobileProduct(0, "Apple", "iPhone 15", "Premium", 65900.00, LocalDate.of(2023, 9, 22),
                 "6GB", "128GB", "Apple A16 Bionic", "3349 mAh", "6.1\" Super Retina XDR OLED", "48MP Main + 12MP Ultra-Wide", "iOS 17", "5G"));
-        list.add(new MobileProduct(0, "Apple", "iPhone 14", "Standard", 599.99, LocalDate.of(2022, 9, 16),
+        list.add(new MobileProduct(0, "Apple", "iPhone 14", "Standard", 57900.00, LocalDate.of(2022, 9, 16),
                 "6GB", "128GB", "Apple A15 Bionic", "3279 mAh", "6.1\" Super Retina XDR OLED", "12MP Main + 12MP Ultra-Wide", "iOS 16", "5G"));
 
         // OnePlus
-        list.add(new MobileProduct(0, "OnePlus", "OnePlus 13", "Flagship", 899.99, LocalDate.of(2025, 1, 10),
+        list.add(new MobileProduct(0, "OnePlus", "OnePlus 13", "Flagship", 69999.00, LocalDate.of(2025, 1, 10),
                 "16GB", "512GB", "Snapdragon 8 Elite", "6000 mAh", "6.82\" 2K LTPO AMOLED 120Hz", "50MP Hasselblad + 50MP + 50MP Periscope", "OxygenOS 15", "5G"));
-        list.add(new MobileProduct(0, "OnePlus", "OnePlus 12", "Flagship", 799.99, LocalDate.of(2024, 1, 23),
+        list.add(new MobileProduct(0, "OnePlus", "OnePlus 12", "Flagship", 64999.00, LocalDate.of(2024, 1, 23),
                 "12GB", "256GB", "Snapdragon 8 Gen 3", "5400 mAh", "6.82\" 2K AMOLED ProXDR 120Hz", "50MP Sony LYT-808 + 64MP 3x + 48MP", "OxygenOS 14", "5G"));
-        list.add(new MobileProduct(0, "OnePlus", "OnePlus 12R", "Performance", 499.99, LocalDate.of(2024, 2, 6),
+        list.add(new MobileProduct(0, "OnePlus", "OnePlus 12R", "Performance", 39999.00, LocalDate.of(2024, 2, 6),
                 "16GB", "256GB", "Snapdragon 8 Gen 2", "5500 mAh", "6.78\" 1.5K AMOLED 120Hz", "50MP Sony IMX890 + 8MP + 2MP", "OxygenOS 14", "5G"));
-        list.add(new MobileProduct(0, "OnePlus", "OnePlus Nord 4", "Mid-Range", 379.99, LocalDate.of(2024, 7, 16),
+        list.add(new MobileProduct(0, "OnePlus", "OnePlus Nord 4", "Mid-Range", 29999.00, LocalDate.of(2024, 7, 16),
                 "8GB", "256GB", "Snapdragon 7+ Gen 3", "5500 mAh", "6.74\" AMOLED 120Hz", "50MP Sony LYT-600 OIS + 8MP", "OxygenOS 14.1", "5G"));
 
         // Xiaomi
-        list.add(new MobileProduct(0, "Xiaomi", "Xiaomi 15 Pro", "Flagship", 849.99, LocalDate.of(2024, 10, 29),
+        list.add(new MobileProduct(0, "Xiaomi", "Xiaomi 15 Pro", "Flagship", 69999.00, LocalDate.of(2024, 10, 29),
                 "16GB", "512GB", "Snapdragon 8 Elite", "6100 mAh", "6.73\" 2K OLED 120Hz", "50MP Leica Main + 50MP 5x + 50MP UW", "HyperOS 2.0", "5G"));
-        list.add(new MobileProduct(0, "Xiaomi", "Xiaomi 14 Ultra", "Ultra Flagship", 1299.99, LocalDate.of(2024, 3, 19),
+        list.add(new MobileProduct(0, "Xiaomi", "Xiaomi 14 Ultra", "Ultra Flagship", 99999.00, LocalDate.of(2024, 3, 19),
                 "16GB", "512GB", "Snapdragon 8 Gen 3", "5000 mAh", "6.73\" LTPO AMOLED 120Hz", "Quad 50MP Leica 1-inch sensor", "HyperOS", "5G"));
-        list.add(new MobileProduct(0, "Xiaomi", "Redmi Note 14 Pro+", "Mid-Range", 349.99, LocalDate.of(2024, 9, 26),
+        list.add(new MobileProduct(0, "Xiaomi", "Redmi Note 14 Pro+", "Mid-Range", 30999.00, LocalDate.of(2024, 9, 26),
                 "12GB", "256GB", "Snapdragon 7s Gen 3", "6200 mAh", "6.67\" 1.5K Curved OLED 120Hz", "50MP Light Hunter 800 + 50MP 2.5x + 8MP", "HyperOS", "5G"));
-        list.add(new MobileProduct(0, "Xiaomi", "POCO F6", "Performance", 369.99, LocalDate.of(2024, 5, 23),
+        list.add(new MobileProduct(0, "Xiaomi", "POCO F6", "Performance", 29999.00, LocalDate.of(2024, 5, 23),
                 "12GB", "512GB", "Snapdragon 8s Gen 3", "5000 mAh", "6.67\" CrystalRes AMOLED 120Hz", "50MP Sony IMX882 OIS + 8MP", "HyperOS", "5G"));
 
         // Vivo
-        list.add(new MobileProduct(0, "Vivo", "Vivo X100 Pro", "Flagship", 999.99, LocalDate.of(2024, 1, 4),
+        list.add(new MobileProduct(0, "Vivo", "Vivo X100 Pro", "Flagship", 89999.00, LocalDate.of(2024, 1, 4),
                 "16GB", "512GB", "MediaTek Dimensity 9300", "5400 mAh", "6.78\" LTPO AMOLED 120Hz", "50MP ZEISS 1-inch + 50MP APO Tele + 50MP UW", "Funtouch OS 14", "5G"));
-        list.add(new MobileProduct(0, "Vivo", "Vivo V40 Pro", "Portrait Flagship", 599.99, LocalDate.of(2024, 8, 7),
+        list.add(new MobileProduct(0, "Vivo", "Vivo V40 Pro", "Portrait Flagship", 49999.00, LocalDate.of(2024, 8, 7),
                 "12GB", "512GB", "MediaTek Dimensity 9200+", "5500 mAh", "6.78\" 1.5K Curved AMOLED 120Hz", "Triple 50MP ZEISS Optics", "Funtouch OS 14", "5G"));
-        list.add(new MobileProduct(0, "Vivo", "Vivo T3 Ultra", "Mid-Range", 379.99, LocalDate.of(2024, 9, 12),
+        list.add(new MobileProduct(0, "Vivo", "Vivo T3 Ultra", "Mid-Range", 31999.00, LocalDate.of(2024, 9, 12),
                 "8GB", "256GB", "MediaTek Dimensity 9200+", "5500 mAh", "6.78\" 3D Curved AMOLED 120Hz", "50MP Sony IMX921 OIS + 8MP", "Funtouch OS 14", "5G"));
-        list.add(new MobileProduct(0, "Vivo", "Vivo Y200", "Budget Mid-Range", 249.99, LocalDate.of(2023, 10, 25),
+        list.add(new MobileProduct(0, "Vivo", "Vivo Y200", "Budget Mid-Range", 21999.00, LocalDate.of(2023, 10, 25),
                 "8GB", "128GB", "Snapdragon 4 Gen 1", "4800 mAh", "6.67\" AMOLED 120Hz Smart Aura Light", "64MP OIS + 2MP", "Funtouch OS 13", "5G"));
 
         // Oppo
-        list.add(new MobileProduct(0, "Oppo", "Find X8 Pro", "Flagship", 1099.99, LocalDate.of(2024, 11, 21),
+        list.add(new MobileProduct(0, "Oppo", "Find X8 Pro", "Flagship", 99999.00, LocalDate.of(2024, 11, 21),
                 "16GB", "512GB", "MediaTek Dimensity 9400", "5910 mAh", "6.78\" Quad Curved AMOLED 120Hz", "50MP Hasselblad Dual Periscope Quad Camera", "ColorOS 15", "5G"));
-        list.add(new MobileProduct(0, "Oppo", "Reno 12 Pro", "Design Mid-Range", 479.99, LocalDate.of(2024, 6, 18),
+        list.add(new MobileProduct(0, "Oppo", "Reno 12 Pro", "Design Mid-Range", 36999.00, LocalDate.of(2024, 6, 18),
                 "12GB", "512GB", "MediaTek Dimensity 7300-Energy", "5000 mAh", "6.7\" Quad Curved AMOLED 120Hz", "50MP Sony LYT-600 OIS + 50MP 2x + 8MP", "ColorOS 14.1", "5G"));
-        list.add(new MobileProduct(0, "Oppo", "F27 Pro+", "Durable Mid-Range", 349.99, LocalDate.of(2024, 6, 13),
+        list.add(new MobileProduct(0, "Oppo", "F27 Pro+", "Durable Mid-Range", 27999.00, LocalDate.of(2024, 6, 13),
                 "8GB", "256GB", "MediaTek Dimensity 7050", "5000 mAh", "6.7\" 3D Curved AMOLED 120Hz (IP69)", "64MP + 2MP", "ColorOS 14", "5G"));
-        list.add(new MobileProduct(0, "Oppo", "A3 Pro", "Budget", 219.99, LocalDate.of(2024, 4, 12),
+        list.add(new MobileProduct(0, "Oppo", "A3 Pro", "Budget", 17999.00, LocalDate.of(2024, 4, 12),
                 "8GB", "128GB", "MediaTek Dimensity 7050", "5000 mAh", "6.7\" Curved OLED 120Hz", "64MP + 2MP", "ColorOS 14", "5G"));
 
         // Google Pixel
-        list.add(new MobileProduct(0, "Google Pixel", "Pixel 9 Pro XL", "Flagship AI", 1099.99, LocalDate.of(2024, 8, 22),
+        list.add(new MobileProduct(0, "Google Pixel", "Pixel 9 Pro XL", "Flagship AI", 124999.00, LocalDate.of(2024, 8, 22),
                 "16GB", "256GB", "Google Tensor G4 + Titan M2", "5060 mAh", "6.8\" Super Actua LTPO OLED 120Hz", "50MP Octa PD + 48MP Quad PD 5x + 48MP UW", "Android 15 (Gemini Nano Built-in)", "5G"));
-        list.add(new MobileProduct(0, "Google Pixel", "Pixel 9", "AI Standard", 799.99, LocalDate.of(2024, 8, 22),
+        list.add(new MobileProduct(0, "Google Pixel", "Pixel 9", "AI Standard", 79999.00, LocalDate.of(2024, 8, 22),
                 "12GB", "128GB", "Google Tensor G4", "4700 mAh", "6.3\" Actua OLED 120Hz", "50MP Octa PD + 48MP Quad PD UW", "Android 15 (Gemini Nano Built-in)", "5G"));
-        list.add(new MobileProduct(0, "Google Pixel", "Pixel 8a", "Mid-Range AI", 499.99, LocalDate.of(2024, 5, 14),
+        list.add(new MobileProduct(0, "Google Pixel", "Pixel 8a", "Mid-Range AI", 52999.00, LocalDate.of(2024, 5, 14),
                 "8GB", "128GB", "Google Tensor G3", "4492 mAh", "6.1\" Actua OLED 120Hz", "64MP Quad PD + 13MP Ultrawide", "Android 14 (7 yrs updates)", "5G"));
-        list.add(new MobileProduct(0, "Google Pixel", "Pixel 8 Pro", "Flagship", 899.99, LocalDate.of(2023, 10, 12),
+        list.add(new MobileProduct(0, "Google Pixel", "Pixel 8 Pro", "Flagship", 84999.00, LocalDate.of(2023, 10, 12),
                 "12GB", "256GB", "Google Tensor G3", "5050 mAh", "6.7\" Super Actua LTPO OLED 120Hz", "50MP Octa PD + 48MP 5x + 48MP UW", "Android 14", "5G"));
 
         return list;

@@ -19,6 +19,10 @@
          1. APPLICATION START — LOGIN SCREEN
          ======================================================== -->
     <section id="loginScreen" class="auth-wrapper">
+        <button class="theme-toggle-floating-btn" onclick="toggleTheme()" title="Switch Light/Dark Mode" aria-label="Toggle Theme">
+            <i class="fas fa-sun theme-icon-light hidden" style="color: #f59e0b;"></i>
+            <i class="fas fa-moon theme-icon-dark" style="color: #38bdf8;"></i>
+        </button>
         <div class="auth-card fade-in">
             <div class="auth-logo-badge">
                 <i class="fas fa-brain"></i>
@@ -66,6 +70,10 @@
          2. REGISTRATION SCREEN
          ======================================================== -->
     <section id="registerScreen" class="auth-wrapper hidden">
+        <button class="theme-toggle-floating-btn" onclick="toggleTheme()" title="Switch Light/Dark Mode" aria-label="Toggle Theme">
+            <i class="fas fa-sun theme-icon-light hidden" style="color: #f59e0b;"></i>
+            <i class="fas fa-moon theme-icon-dark" style="color: #38bdf8;"></i>
+        </button>
         <div class="auth-card fade-in">
             <div class="auth-logo-badge" style="color: var(--emerald-500); border-color: rgba(16, 185, 129, 0.35);">
                 <i class="fas fa-user-shield"></i>
@@ -178,7 +186,21 @@
                     <h2 id="topNavTitle" style="font-size: 18px; font-weight: 700;">Mobile Inventory &amp; Sales Analytics</h2>
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 14px;">
+                <!-- Product Search Bar -->
+                <div class="search-bar-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="globalProductSearchInput" class="form-control" placeholder="Search smartphone by name, brand, or model..." oninput="handleProductSearchInput(this.value)">
+                    <button id="clearSearchBtn" class="clear-search-btn hidden" onclick="clearProductSearch()" title="Clear search">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button id="themeToggleBtn" class="btn btn-secondary theme-toggle-btn" style="font-size: 13px; padding: 7px 14px;" onclick="toggleTheme()" title="Switch Light/Dark Mode" aria-label="Toggle Theme">
+                        <i class="fas fa-sun theme-icon-light hidden" style="color: #f59e0b;"></i>
+                        <i class="fas fa-moon theme-icon-dark" style="color: #38bdf8;"></i>
+                        <span id="themeToggleText">Light Mode</span>
+                    </button>
                     <button class="btn btn-secondary" style="font-size: 13px; padding: 7px 14px;" onclick="openAddProductModal()">
                         <i class="fas fa-plus"></i> Add Product
                     </button>
@@ -254,12 +276,17 @@
                     </div>
 
                     <!-- Available Mobile Models Section -->
-                    <div id="availableModelsSection" style="display: flex; justify-content: space-between; align-items: center; margin: 28px 0 16px 0;">
+                    <div id="availableModelsSection" style="display: flex; justify-content: space-between; align-items: center; margin: 28px 0 16px 0; flex-wrap: wrap; gap: 12px;">
                         <div>
-                            <h2 style="font-size: 20px; font-weight: 700;">Available Models for <span id="currentBrandLabel" style="color: var(--cyan-400);">Samsung</span></h2>
-                            <p style="font-size: 13px; color: var(--text-muted);">Click on any smartphone to open the full analytics dashboard</p>
+                            <h2 style="font-size: 20px; font-weight: 700;"><span id="modelsSectionHeading">Available Models for <span id="currentBrandLabel" style="color: var(--cyan-400);">Samsung</span></span></h2>
+                            <p style="font-size: 13px; color: var(--text-muted);" id="modelsSectionSubheading">Click on any smartphone to open the full analytics dashboard</p>
                         </div>
-                        <span id="modelCountBadge" class="metric-badge badge-cyan">5 Models Loaded</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button id="exitSearchBtn" class="btn btn-secondary hidden" style="padding: 5px 12px; font-size: 12px;" onclick="clearProductSearch()">
+                                <i class="fas fa-arrow-left"></i> Restore All Products
+                            </button>
+                            <span id="modelCountBadge" class="metric-badge badge-cyan">5 Models Loaded</span>
+                        </div>
                     </div>
 
                     <div id="modelsGridContainer" class="models-grid">
@@ -289,7 +316,7 @@
                             <div style="display: flex; align-items: center; gap: 20px;">
                                 <div>
                                     <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Official Price</div>
-                                    <div id="prodPriceTag" style="font-size: 26px; font-weight: 800; color: var(--emerald-500); font-family: 'JetBrains Mono', monospace;">$1,299.99</div>
+                                    <div id="prodPriceTag" style="font-size: 26px; font-weight: 800; color: var(--emerald-500); font-family: 'JetBrains Mono', monospace;">₹1,29,999.00</div>
                                 </div>
                                 <div id="prodClassBadge" class="metric-badge badge-green" style="font-size: 13px; padding: 8px 14px;">
                                     <i class="fas fa-bolt"></i> Fast Moving
@@ -811,7 +838,7 @@
                                     <tr>
                                         <th>Brand</th>
                                         <th>Model Name</th>
-                                        <th>Price</th>
+                                        <th>Price (₹)</th>
                                         <th>Stock</th>
                                         <th>Monthly Sales</th>
                                         <th>Pred. Demand</th>
@@ -869,29 +896,60 @@
                                 </button>
                             </div>
 
-                            <div id="uploadResultAlert" class="alert-box alert-success hidden" style="margin-top: 18px; flex-direction: column; align-items: flex-start; gap: 8px;">
+                            <div id="uploadResultAlert" class="alert-box alert-success hidden" style="margin-top: 18px; flex-direction: column; align-items: flex-start; gap: 10px;">
                                 <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
                                     <i class="fas fa-check-circle" id="uploadResultIcon"></i>
                                     <span id="uploadResultText" style="flex: 1; font-weight: 600;">Processed successfully!</span>
                                 </div>
-                                <button id="viewErrorsBtn" class="btn btn-secondary hidden" style="padding: 5px 10px; font-size: 11px; margin-top: 4px;" onclick="toggleErrorsSection()">
-                                    <i class="fas fa-circle-info"></i> View Errors (<span id="errorsCountBadge">0</span>)
-                                </button>
+
+                                <!-- Accurate Import Statistics Grid -->
+                                <div id="uploadStatsGrid" class="upload-stats-grid hidden">
+                                    <div class="upload-stat-card">
+                                        <div class="upload-stat-label">Total Rows</div>
+                                        <div class="upload-stat-number" id="statTotalRows" style="color: var(--cyan-400);">0</div>
+                                    </div>
+                                    <div class="upload-stat-card">
+                                        <div class="upload-stat-label">Imported</div>
+                                        <div class="upload-stat-number" id="statImportedRows" style="color: var(--emerald-500);">0</div>
+                                    </div>
+                                    <div class="upload-stat-card">
+                                        <div class="upload-stat-label">Skipped</div>
+                                        <div class="upload-stat-number" id="statSkippedRows" style="color: var(--amber-500);">0</div>
+                                    </div>
+                                    <div class="upload-stat-card">
+                                        <div class="upload-stat-label">Errors</div>
+                                        <div class="upload-stat-number" id="statErrorRows" style="color: var(--rose-500);">0</div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 8px; width: 100%; flex-wrap: wrap;">
+                                    <button id="viewErrorsBtn" class="btn btn-secondary hidden" style="padding: 6px 12px; font-size: 12px;" onclick="toggleErrorsSection()">
+                                        <i class="fas fa-circle-info"></i> View Error Details (<span id="errorsCountBadge">0</span>)
+                                    </button>
+                                    <button id="downloadErrorsBtn" class="btn btn-secondary hidden" style="padding: 6px 12px; font-size: 12px; border-color: rgba(244, 63, 94, 0.4);" onclick="downloadValidationErrorsCsv()">
+                                        <i class="fas fa-file-csv" style="color: var(--rose-500);"></i> Download Error Report (CSV)
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Expandable Error Details Table -->
-                            <div id="errorDetailsSection" class="glass-card hidden" style="margin-top: 12px; padding: 14px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: var(--radius-sm); max-height: 240px; overflow-y: auto;">
-                                <div style="font-size: 12px; font-weight: 700; color: var(--rose-500); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-triangle-exclamation"></i> Skipped Rows & Validation Issues:
+                            <div id="errorDetailsSection" class="glass-card hidden" style="margin-top: 12px; padding: 14px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(244, 63, 94, 0.35); border-radius: var(--radius-sm); max-height: 280px; overflow-y: auto;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <div style="font-size: 12px; font-weight: 700; color: var(--rose-500); display: flex; align-items: center; gap: 6px;">
+                                        <i class="fas fa-triangle-exclamation"></i> Skipped Rows &amp; Validation Report:
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--text-muted);">
+                                        Correct your CSV and upload it again
+                                    </div>
                                 </div>
                                 <table class="data-table" style="font-size: 11px;">
                                     <thead>
                                         <tr>
                                             <th>Row</th>
                                             <th>Column</th>
-                                            <th>Value</th>
-                                            <th>Problem</th>
-                                            <th>Suggested Fix</th>
+                                            <th>Actual Value</th>
+                                            <th>Reason for Failure</th>
+                                            <th>Suggested Correction</th>
                                         </tr>
                                     </thead>
                                     <tbody id="errorDetailsTableBody"></tbody>
@@ -933,8 +991,8 @@
 
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                                     <div class="form-group">
-                                        <label class="form-label" for="manualPrice">Price ($)</label>
-                                        <input type="number" id="manualPrice" step="0.01" class="form-control" placeholder="999.99" required>
+                                        <label class="form-label" for="manualPrice">Price (₹)</label>
+                                        <input type="number" id="manualPrice" step="0.01" class="form-control" placeholder="79999.00" required>
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label" for="manualStock">Initial Stock</label>

@@ -15,9 +15,69 @@ let selectedCsvFile = null;
 // Chart Instances
 let chartInstances = {};
 
+// Theme Management & Currency Formatting
+function formatINR(amount, includeDecimals = true) {
+    if (amount === undefined || amount === null || isNaN(amount)) return '₹0.00';
+    const num = Number(amount);
+    return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        minimumFractionDigits: includeDecimals ? 2 : 0,
+        maximumFractionDigits: includeDecimals ? 2 : 0
+    }).format(num);
+}
+
+function applyTheme(theme) {
+    const isLight = theme === 'light';
+    if (isLight) {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.body.classList.add('theme-light');
+        document.body.classList.remove('theme-dark');
+        const text = document.getElementById('themeToggleText');
+        if (text) text.textContent = 'Dark Mode';
+        document.querySelectorAll('.theme-icon-light').forEach(el => el.classList.remove('hidden'));
+        document.querySelectorAll('.theme-icon-dark').forEach(el => el.classList.add('hidden'));
+    } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.body.classList.add('theme-dark');
+        document.body.classList.remove('theme-light');
+        const text = document.getElementById('themeToggleText');
+        if (text) text.textContent = 'Light Mode';
+        document.querySelectorAll('.theme-icon-light').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.theme-icon-dark').forEach(el => el.classList.remove('hidden'));
+    }
+    localStorage.setItem('mobilesales_theme', theme);
+
+    // Re-render open charts with updated theme colors
+    if (selectedProduct && selectedProduct.sales) {
+        renderWeeklySalesChart(selectedProduct.sales.weeklyHistory || [25, 30, 34, 38]);
+        renderMonthlySalesChart(selectedProduct.sales.monthlyHistory || [90, 105, 115, 145]);
+        renderProjectedDemandChart(selectedProduct.demand?.projectedDemandCurve || [115, 145, 155, 168, 175, 182]);
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = localStorage.getItem('mobilesales_theme') || 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+}
+
+function getChartThemeColors() {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    return {
+        textColor: isLight ? '#475569' : '#94a3b8',
+        gridColor: isLight ? 'rgba(148, 163, 184, 0.22)' : 'rgba(148, 163, 184, 0.1)',
+        xGridColor: isLight ? 'rgba(148, 163, 184, 0.14)' : 'rgba(148, 163, 184, 0.05)'
+    };
+}
+
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if previously logged in session in sessionStorage
+    // 1. Initialize Theme from localStorage
+    const savedTheme = localStorage.getItem('mobilesales_theme') || 'dark';
+    applyTheme(savedTheme);
+
+    // 2. Check if previously logged in session in sessionStorage
     const savedUser = sessionStorage.getItem('mobilesales_user');
     if (savedUser) {
         try {
@@ -178,13 +238,119 @@ function switchMainView(viewId, navElement = null) {
 }
 
 // ==========================================
-// 3. BRAND SELECTION & MODELS GRID
+// 3. BRAND SELECTION, MODELS GRID & PRODUCT SEARCH
 // ==========================================
+
+let searchDebounceTimer = null;
+let isSearchActive = false;
+
+function handleProductSearchInput(query) {
+    const clearBtn = document.getElementById('clearSearchBtn');
+    const trimmed = (query || '').trim();
+
+    if (trimmed.length > 0) {
+        clearBtn?.classList.remove('hidden');
+    } else {
+        clearBtn?.classList.add('hidden');
+    }
+
+    if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+    }
+
+    if (!trimmed) {
+        if (isSearchActive) {
+            clearProductSearch(false);
+        }
+        return;
+    }
+
+    searchDebounceTimer = setTimeout(() => {
+        executeProductSearch(trimmed);
+    }, 280);
+}
+
+async function executeProductSearch(query) {
+    if (!query || !query.trim()) return;
+    const cleanQuery = query.trim();
+    isSearchActive = true;
+
+    // Switch view to brand selection view where search results are presented
+    switchMainView('brandSelectionView', document.getElementById('navBrandSelection'));
+
+    const heading = document.getElementById('modelsSectionHeading');
+    const subheading = document.getElementById('modelsSectionSubheading');
+    const exitBtn = document.getElementById('exitSearchBtn');
+    const badge = document.getElementById('modelCountBadge');
+    const container = document.getElementById('modelsGridContainer');
+
+    if (heading) heading.textContent = `Search Results for "${cleanQuery}"`;
+    if (subheading) subheading.textContent = 'Displaying matching smartphone records from database';
+    if (exitBtn) exitBtn.classList.remove('hidden');
+    if (badge) badge.textContent = 'Searching database...';
+
+    // Deselect brand chips to indicate global search
+    document.querySelectorAll('.brand-chip').forEach(c => c.classList.remove('active'));
+
+    try {
+        const res = await fetch(`/api/products/search?q=${encodeURIComponent(cleanQuery)}`);
+        const data = await res.json();
+
+        if (data.success && Array.isArray(data.products)) {
+            renderModelsGrid(data.products, true);
+        } else {
+            renderModelsGrid([], true);
+        }
+
+        // Smooth scroll to search results
+        setTimeout(() => {
+            const modelsSec = document.getElementById('availableModelsSection') || container;
+            if (modelsSec) {
+                modelsSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 50);
+    } catch (err) {
+        console.error('Error during product search:', err);
+        renderModelsGrid([], true);
+    }
+}
+
+function clearProductSearch(reloadCurrentBrand = true) {
+    isSearchActive = false;
+    const searchInput = document.getElementById('globalProductSearchInput');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    const exitBtn = document.getElementById('exitSearchBtn');
+    const heading = document.getElementById('modelsSectionHeading');
+    const subheading = document.getElementById('modelsSectionSubheading');
+
+    if (searchInput) searchInput.value = '';
+    if (clearBtn) clearBtn.classList.add('hidden');
+    if (exitBtn) exitBtn.classList.add('hidden');
+    if (heading) heading.textContent = 'Available Smartphone Models';
+    if (subheading) subheading.textContent = 'Select any smartphone to view sales metrics, inventory status, and AI insights';
+
+    if (reloadCurrentBrand) {
+        onBrandSelected(currentBrand);
+    }
+}
 
 async function onBrandSelected(brand, chipElement = null) {
     currentBrand = brand;
     document.getElementById('currentBrandLabel').textContent = brand;
     document.getElementById('brandDropdownSelect').value = brand;
+
+    // If search was active, reset search input and headings
+    if (isSearchActive) {
+        isSearchActive = false;
+        const searchInput = document.getElementById('globalProductSearchInput');
+        const clearBtn = document.getElementById('clearSearchBtn');
+        const exitBtn = document.getElementById('exitSearchBtn');
+        if (searchInput) searchInput.value = '';
+        if (clearBtn) clearBtn.classList.add('hidden');
+        if (exitBtn) exitBtn.classList.add('hidden');
+        document.getElementById('modelsSectionHeading').textContent = 'Available Smartphone Models';
+        document.getElementById('modelsSectionSubheading').textContent = 'Select any smartphone to view sales metrics, inventory status, and AI insights';
+    }
 
     // Highlight chip
     if (chipElement) {
@@ -205,8 +371,7 @@ async function onBrandSelected(brand, chipElement = null) {
         const res = await fetch(`/api/products?brand=${encodeURIComponent(brand)}`);
         const data = await res.json();
         if (data.success && data.products) {
-            renderModelsGrid(data.products);
-            // BUG 2 FIX: Automatically navigate/scroll to model selection area without manual scrolling
+            renderModelsGrid(data.products, false);
             setTimeout(() => {
                 const modelsSec = document.getElementById('availableModelsSection') || document.getElementById('modelsGridContainer');
                 if (modelsSec) {
@@ -219,30 +384,76 @@ async function onBrandSelected(brand, chipElement = null) {
     }
 }
 
-function renderModelsGrid(products) {
+function renderModelsGrid(products, isSearchResult = false) {
     const container = document.getElementById('modelsGridContainer');
     container.innerHTML = '';
-    document.getElementById('modelCountBadge').textContent = `${products.length} Models Available`;
+
+    if (!products || products.length === 0) {
+        if (isSearchResult) {
+            document.getElementById('modelCountBadge').textContent = '0 Models Found';
+            container.innerHTML = `
+                <div class="no-results-card" style="grid-column: 1 / -1;">
+                    <i class="fas fa-search-minus" style="font-size: 42px; color: var(--rose-500); margin-bottom: 14px;"></i>
+                    <h3 style="margin-bottom: 8px; color: var(--text-primary); font-size: 18px; font-weight: 700;">No matching product found.</h3>
+                    <p style="color: var(--text-muted); font-size: 13px; max-width: 480px; margin: 0 auto 18px auto; line-height: 1.6;">
+                        No smartphone records match your search criteria. Check your spelling, try searching with fewer keywords (e.g. brand name or series), or restore the product listing.
+                    </p>
+                    <button class="btn btn-secondary" onclick="clearProductSearch()">
+                        <i class="fas fa-rotate-left"></i> Restore Normal Product Listing
+                    </button>
+                </div>
+            `;
+        } else {
+            document.getElementById('modelCountBadge').textContent = '0 Models Available';
+            container.innerHTML = `
+                <div class="no-results-card" style="grid-column: 1 / -1;">
+                    <i class="fas fa-box-open" style="font-size: 38px; color: var(--text-muted); margin-bottom: 12px;"></i>
+                    <h3 style="margin-bottom: 6px; color: var(--text-primary); font-size: 16px;">No models currently available for this brand</h3>
+                    <p style="color: var(--text-muted); font-size: 13px;">Import products using the CSV Data Ingestion tool or add new models manually.</p>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    document.getElementById('modelCountBadge').textContent = isSearchResult
+        ? `${products.length} Model${products.length === 1 ? '' : 's'} Found`
+        : `${products.length} Models Available`;
 
     products.forEach(p => {
         const card = document.createElement('div');
         card.className = 'glass-card model-card fade-in';
         card.onclick = () => openProductDashboard(p.productId);
 
+        const stockUnits = p.currentStock !== undefined && p.currentStock !== null ? p.currentStock : null;
+        const stockBadge = stockUnits !== null
+            ? `<span class="badge ${stockUnits <= 15 ? 'badge-rose' : stockUnits <= 40 ? 'badge-amber' : 'badge-green'}" style="font-size: 11px; font-weight: 600;"><i class="fas fa-boxes-stacked"></i> Stock: ${stockUnits} units</span>`
+            : '';
+        const salesBadge = p.monthlySales
+            ? `<span class="badge badge-cyan" style="font-size: 11px; font-weight: 600;"><i class="fas fa-chart-line"></i> Sales: ${p.monthlySales} units</span>`
+            : '';
+
         card.innerHTML = `
             <div class="model-header">
                 <div>
-                    <span style="font-size: 11px; text-transform: uppercase; color: var(--cyan-400); font-weight: 700;">${escapeHtml(p.brand)}</span>
+                    <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 4px; flex-wrap: wrap;">
+                        <span style="font-size: 11px; text-transform: uppercase; color: var(--cyan-400); font-weight: 700;">${escapeHtml(p.brand)}</span>
+                        <span class="badge badge-cyan" style="font-size: 10px; padding: 2px 6px;">ID: #${p.productId}</span>
+                        ${p.category ? `<span style="font-size: 11px; color: var(--text-muted);">• ${escapeHtml(p.category)}</span>` : ''}
+                    </div>
                     <h3 class="model-name">${escapeHtml(p.modelName)}</h3>
                 </div>
-                <div class="model-price">$${p.price.toFixed(2)}</div>
+                <div class="model-price">${formatINR(p.price)}</div>
             </div>
             <div class="model-specs-line">
-                <i class="fas fa-microchip"></i> ${escapeHtml(p.processor)}<br>
-                <i class="fas fa-memory"></i> ${escapeHtml(p.ram)} / ${escapeHtml(p.storage)} • <i class="fas fa-battery-full"></i> ${escapeHtml(p.battery)}
+                <i class="fas fa-microchip"></i> ${escapeHtml(p.processor || 'Standard Octa-core')}<br>
+                <i class="fas fa-memory"></i> ${escapeHtml(p.ram || '8GB')} / ${escapeHtml(p.storage || '128GB')} • <i class="fas fa-battery-full"></i> ${escapeHtml(p.battery || '5000 mAh')}
+                ${p.display ? `<br><i class="fas fa-mobile-screen"></i> ${escapeHtml(p.display)}` : ''}
+                ${p.camera ? ` • <i class="fas fa-camera"></i> ${escapeHtml(p.camera)}` : ''}
             </div>
+            ${(stockBadge || salesBadge) ? `<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">${stockBadge}${salesBadge}</div>` : ''}
             <div class="model-indicators">
-                <span style="color: var(--text-muted);"><i class="fas fa-layer-group"></i> ${escapeHtml(p.category)}</span>
+                <span style="color: var(--text-muted); font-size: 12px;"><i class="fas fa-layer-group"></i> ${escapeHtml(p.category || 'Smartphone')}</span>
                 <span style="margin-left: auto; color: var(--cyan-400); font-weight: 600; font-size: 13px;">
                     View Dashboard <i class="fas fa-chevron-right"></i>
                 </span>
@@ -294,7 +505,7 @@ async function openProductDashboard(productId) {
         document.getElementById('prodBrandTag').textContent = selectedProduct.product.brand;
         document.getElementById('prodCategoryTag').textContent = selectedProduct.product.category;
         document.getElementById('prodModelTitle').textContent = selectedProduct.product.modelName;
-        document.getElementById('prodPriceTag').textContent = `$${selectedProduct.product.price.toFixed(2)}`;
+        document.getElementById('prodPriceTag').textContent = formatINR(selectedProduct.product.price);
 
         // Classification badge
         const badge = document.getElementById('prodClassBadge');
@@ -530,6 +741,7 @@ function renderWeeklySalesChart(data) {
     if (!ctx) return;
     if (chartInstances['weeklySales']) chartInstances['weeklySales'].destroy();
 
+    const cols = getChartThemeColors();
     chartInstances['weeklySales'] = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -548,8 +760,8 @@ function renderWeeklySalesChart(data) {
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                y: { grid: { color: 'rgba(148, 163, 184, 0.1)' }, ticks: { color: '#94a3b8' } },
-                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                y: { grid: { color: cols.gridColor }, ticks: { color: cols.textColor } },
+                x: { grid: { display: false }, ticks: { color: cols.textColor } }
             }
         }
     });
@@ -560,6 +772,7 @@ function renderMonthlySalesChart(data) {
     if (!ctx) return;
     if (chartInstances['monthlySales']) chartInstances['monthlySales'].destroy();
 
+    const cols = getChartThemeColors();
     chartInstances['monthlySales'] = new Chart(ctx, {
         type: 'line',
         data: {
@@ -581,8 +794,8 @@ function renderMonthlySalesChart(data) {
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                y: { grid: { color: 'rgba(148, 163, 184, 0.1)' }, ticks: { color: '#94a3b8' } },
-                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                y: { grid: { color: cols.gridColor }, ticks: { color: cols.textColor } },
+                x: { grid: { display: false }, ticks: { color: cols.textColor } }
             }
         }
     });
@@ -593,6 +806,7 @@ function renderProjectedDemandChart(data) {
     if (!ctx) return;
     if (chartInstances['projectedDemand']) chartInstances['projectedDemand'].destroy();
 
+    const cols = getChartThemeColors();
     chartInstances['projectedDemand'] = new Chart(ctx, {
         type: 'line',
         data: {
@@ -615,8 +829,8 @@ function renderProjectedDemandChart(data) {
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                y: { grid: { color: 'rgba(148, 163, 184, 0.1)' }, ticks: { color: '#94a3b8' } },
-                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                y: { grid: { color: cols.gridColor }, ticks: { color: cols.textColor } },
+                x: { grid: { display: false }, ticks: { color: cols.textColor } }
             }
         }
     });
@@ -704,7 +918,7 @@ function renderCatalogTable(products) {
         tr.innerHTML = `
             <td><strong>${escapeHtml(p.brand)}</strong></td>
             <td>${escapeHtml(p.modelName)}</td>
-            <td>$${p.price.toFixed(2)}</td>
+            <td>${formatINR(p.price)}</td>
             <td>${p.currentStock}</td>
             <td>${p.monthlySales}</td>
             <td>${p.predictedDemand}</td>
@@ -725,14 +939,31 @@ function renderCatalogTable(products) {
 
 function filterCatalogTable(query) {
     const q = (query || '').toLowerCase().trim();
+    const tbody = document.getElementById('catalogTableBody');
     if (!q) {
         renderCatalogTable(catalogProducts);
         return;
     }
-    const filtered = catalogProducts.filter(p =>
-        p.brand.toLowerCase().includes(q) || p.modelName.toLowerCase().includes(q)
-    );
-    renderCatalogTable(filtered);
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const filtered = catalogProducts.filter(p => {
+        const text = `${p.brand} ${p.modelName} ${p.classification || ''} ${p.reorderStatus || ''}`.toLowerCase();
+        return tokens.every(tok => text.includes(tok));
+    });
+
+    if (filtered.length === 0) {
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="12" style="text-align: center; color: var(--text-muted); padding: 36px 16px; font-size: 14px;">
+                        <i class="fas fa-search" style="margin-right: 8px; color: var(--rose-400);"></i>
+                        No matching product found for "<strong>${escapeHtml(query)}</strong>".
+                    </td>
+                </tr>
+            `;
+        }
+    } else {
+        renderCatalogTable(filtered);
+    }
 }
 
 function renderExecutiveCharts(m) {
@@ -818,13 +1049,14 @@ function renderChart(canvasId, type, data, extraOptions = {}) {
     if (!ctx) return;
     if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
 
+    const cols = getChartThemeColors();
     const baseOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        plugins: { legend: { labels: { color: cols.textColor } } },
         scales: (type === 'pie' || type === 'doughnut') ? {} : {
-            y: { grid: { color: 'rgba(148, 163, 184, 0.1)' }, ticks: { color: '#94a3b8' } },
-            x: { grid: { color: 'rgba(148, 163, 184, 0.05)' }, ticks: { color: '#94a3b8' } }
+            y: { grid: { color: cols.gridColor }, ticks: { color: cols.textColor } },
+            x: { grid: { color: cols.xGridColor }, ticks: { color: cols.textColor } }
         }
     };
 
@@ -866,10 +1098,13 @@ async function uploadSelectedCsv() {
     const errorsBadge = document.getElementById('errorsCountBadge');
     const errorSection = document.getElementById('errorDetailsSection');
     const errorTableBody = document.getElementById('errorDetailsTableBody');
+    const statsGrid = document.getElementById('uploadStatsGrid');
+    const downloadErrorsBtn = document.getElementById('downloadErrorsBtn');
 
-    errorSection.classList.add('hidden');
-    viewErrorsBtn.classList.add('hidden');
-    errorTableBody.innerHTML = '';
+    errorSection?.classList.add('hidden');
+    viewErrorsBtn?.classList.add('hidden');
+    downloadErrorsBtn?.classList.add('hidden');
+    if (errorTableBody) errorTableBody.innerHTML = '';
 
     const text = await selectedCsvFile.text();
     try {
@@ -884,40 +1119,52 @@ async function uploadSelectedCsv() {
             const imported = data.productsImported || 0;
             const skipped = data.rowsSkipped || 0;
             const errors = data.errorsEncountered || 0;
+            const totalRows = data.totalRowsDetected !== undefined ? data.totalRowsDetected : (imported + skipped + errors);
             const errorList = data.errorDetails || [];
 
-            alertBox.classList.remove('hidden');
+            alertBox?.classList.remove('hidden');
+
+            // Populate Statistics Cards
+            if (statsGrid) {
+                statsGrid.classList.remove('hidden');
+                document.getElementById('statTotalRows').textContent = totalRows;
+                document.getElementById('statImportedRows').textContent = imported;
+                document.getElementById('statSkippedRows').textContent = skipped;
+                document.getElementById('statErrorRows').textContent = errors;
+            }
 
             if (imported > 0 && errors === 0) {
                 alertBox.className = 'alert-box alert-success';
                 alertIcon.className = 'fas fa-check-circle';
-                alertText.innerHTML = `✓ CSV uploaded successfully! Imported: <strong>${imported}</strong> products. 0 errors.<br><span style="font-size: 12px; font-weight: normal; color: var(--emerald-500);">Analytics and reorder intelligence generated successfully.</span>`;
+                alertText.innerHTML = `✓ CSV uploaded and validated successfully! Imported: <strong>${imported}</strong> products across <strong>${totalRows}</strong> total rows detected. 0 errors.<br><span style="font-size: 12px; font-weight: normal; color: var(--emerald-400);">Inventory stock and AI sales intelligence generated.</span>`;
             } else if (imported > 0 && errors > 0) {
                 alertBox.className = 'alert-box alert-success';
                 alertIcon.className = 'fas fa-check-circle';
-                alertText.innerHTML = `✓ CSV processed. Imported: <strong>${imported}</strong> products, Skipped: <strong>${skipped}</strong> rows. ${errors} error(s) found.`;
-                viewErrorsBtn.classList.remove('hidden');
-                errorsBadge.textContent = errors;
+                alertText.innerHTML = `✓ CSV processed: <strong>${imported}</strong> new smartphone models successfully imported. <strong>${errors}</strong> validation error(s) flagged for correction.`;
+                viewErrorsBtn?.classList.remove('hidden');
+                downloadErrorsBtn?.classList.remove('hidden');
+                if (errorsBadge) errorsBadge.textContent = errors;
             } else {
                 alertBox.className = 'alert-box alert-danger';
                 alertIcon.className = 'fas fa-triangle-exclamation';
-                alertText.innerHTML = `⚠️ CSV processing failed. 0 products imported, <strong>${errors}</strong> errors found.`;
+                alertText.innerHTML = `⚠️ CSV validation completed with 0 products imported, <strong>${errors}</strong> validation error(s) detected.`;
                 if (errors > 0) {
-                    viewErrorsBtn.classList.remove('hidden');
-                    errorsBadge.textContent = errors;
+                    viewErrorsBtn?.classList.remove('hidden');
+                    downloadErrorsBtn?.classList.remove('hidden');
+                    if (errorsBadge) errorsBadge.textContent = errors;
                 }
             }
 
             // Populate Error Details Table if any
-            if (errorList.length > 0) {
+            if (errorList.length > 0 && errorTableBody) {
                 errorList.forEach(err => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td><strong>Row ${err.rowNumber}</strong></td>
-                        <td><span style="color: var(--cyan-400);">${escapeHtml(err.column)}</span></td>
-                        <td><code>${escapeHtml(err.value)}</code></td>
-                        <td><span style="color: var(--rose-500);">${escapeHtml(err.problem)}</span></td>
-                        <td><span style="color: var(--text-secondary);">${escapeHtml(err.suggestedFix)}</span></td>
+                        <td><span style="color: var(--cyan-400); font-weight: 600;">${escapeHtml(err.column)}</span></td>
+                        <td><code style="word-break: break-all; font-size: 11px;">${escapeHtml(err.value || '(empty)')}</code></td>
+                        <td><span style="color: var(--rose-400); font-weight: 500;">${escapeHtml(err.problem)}</span></td>
+                        <td><span style="color: var(--emerald-400); font-size: 12px;">${escapeHtml(err.suggestedFix)}</span></td>
                     `;
                     errorTableBody.appendChild(row);
                 });
@@ -934,13 +1181,13 @@ async function uploadSelectedCsv() {
             alertBox.className = 'alert-box alert-danger';
             alertIcon.className = 'fas fa-triangle-exclamation';
             alertText.textContent = 'Upload error: ' + (data.error || 'Failed to process CSV');
-            alertBox.classList.remove('hidden');
+            alertBox?.classList.remove('hidden');
         }
     } catch (err) {
         alertBox.className = 'alert-box alert-danger';
         alertIcon.className = 'fas fa-triangle-exclamation';
         alertText.textContent = 'Connection error: ' + err.message;
-        alertBox.classList.remove('hidden');
+        alertBox?.classList.remove('hidden');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-upload"></i> Upload &amp; Analyze';
@@ -952,6 +1199,10 @@ function toggleErrorsSection() {
     if (errorSection) {
         errorSection.classList.toggle('hidden');
     }
+}
+
+function downloadValidationErrorsCsv() {
+    window.location.href = '/api/csv/errors/download';
 }
 
 async function refreshBrandOptions() {
